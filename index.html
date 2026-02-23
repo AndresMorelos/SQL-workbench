@@ -7,13 +7,13 @@
   <script src="https://cdn.jsdelivr.net/npm/alasql@4/dist/alasql.min.js"></script>
   <style>
     :root {
-      --bg:     #0d1117;
-      --bg2:    #161b22;
-      --bg3:    #21262d;
-      --border: #30363d;
-      --text:   #c9d1d9;
-      --dim:    #8b949e;
-      --accent: #58a6ff;
+      --bg:     #f6f8fa;
+      --bg2:    #ffffff;
+      --bg3:    #eaeef2;
+      --border: #d0d7de;
+      --text:   #24292f;
+      --dim:    #57606a;
+      --accent: #0969da;
     }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; }
@@ -255,6 +255,56 @@
     ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 
     @media (max-width: 720px) { .layout { grid-template-columns: 1fr; } .sidebar { display: none; } }
+
+    /* ── THEME TOGGLE BUTTON ── */
+    .theme-btn { background: transparent; border: 1px solid var(--border); color: var(--dim); padding: 5px 10px; border-radius: 6px; cursor: pointer; font-size: 1.1rem; line-height: 1; transition: all .15s; }
+    .theme-btn:hover { color: var(--text); border-color: var(--text); }
+
+    /* ── DARK MODE ── */
+    body.dark-mode {
+      --bg:     #0d1117;
+      --bg2:    #161b22;
+      --bg3:    #21262d;
+      --border: #30363d;
+      --text:   #c9d1d9;
+      --dim:    #8b949e;
+      --accent: #58a6ff;
+    }
+    body.dark-mode textarea#editor { color: #e6edf3; }
+
+    /* ── LIGHT MODE SPECIFIC OVERRIDES ── */
+    body:not(.dark-mode) textarea#editor  { color: var(--text); }
+    body:not(.dark-mode) .kw             { color: #cf222e; }
+    body:not(.dark-mode) .tbl            { color: #0550ae; }
+    body:not(.dark-mode) .warn           { color: #82071e !important; }
+    body:not(.dark-mode) .col-type       { color: #0550ae; }
+    body:not(.dark-mode) .kw-field       { color: #0550ae; }
+    body:not(.dark-mode) .kw-val         { color: #0969da; }
+    body:not(.dark-mode) .col-chip.on    { color: #0550ae; background: rgba(9,105,218,.1); border-color: rgba(9,105,218,.4); }
+    body:not(.dark-mode) .agg-fn-pill    { color: #cf222e; background: rgba(207,34,46,.1); border-color: rgba(207,34,46,.3); }
+    body:not(.dark-mode) .map-col        { color: #0550ae; }
+    body:not(.dark-mode) .map-val        { color: #0969da; }
+    body:not(.dark-mode) .ba-cell-changed{ color: #7d4e00; background: rgba(154,103,0,.12); }
+    body:not(.dark-mode) .explain-prose  { border-left-color: var(--accent); }
+    body:not(.dark-mode) .jt-box         { color: #0550ae; }
+    body:not(.dark-mode) .jt-key         { color: #7d4e00; background: rgba(154,103,0,.08); border-color: rgba(154,103,0,.25); }
+    body:not(.dark-mode) .op-badge-or    { color: #82071e; }
+    body:not(.dark-mode) .op-badge-and   { color: #0550ae; }
+    body:not(.dark-mode) .step-n         { color: #fff; }
+    body:not(.dark-mode) .b-SELECT { color: #0550ae; }
+    body:not(.dark-mode) .b-INSERT { color: #116329; }
+    body:not(.dark-mode) .b-UPDATE { color: #7d4e00; }
+    body:not(.dark-mode) .b-DELETE { color: #82071e; }
+    body:not(.dark-mode) .dn-table  { color: #0550ae; border-color: #0969da; box-shadow: 0 0 16px rgba(9,105,218,.2); }
+    body:not(.dark-mode) .dn-join   { color: #0550ae; border-color: #0969da; box-shadow: 0 0 16px rgba(9,105,218,.2); }
+    body:not(.dark-mode) .dn-filter { color: #7d4e00; border-color: #9a6700; box-shadow: 0 0 16px rgba(154,103,0,.2); }
+    body:not(.dark-mode) .dn-sort   { color: #32383f; border-color: #57606a; box-shadow: 0 0 12px rgba(87,96,106,.18); }
+    body:not(.dark-mode) .dn-result { color: #116329; border-color: #1a7f37; box-shadow: 0 0 16px rgba(26,127,55,.2); }
+    body:not(.dark-mode) .dn-data   { color: #0550ae; border-color: #0969da; box-shadow: 0 0 16px rgba(9,105,218,.2); }
+    body:not(.dark-mode) .dn-set    { color: #7d4e00; border-color: #9a6700; box-shadow: 0 0 16px rgba(154,103,0,.2); }
+    body:not(.dark-mode) .dn-del    { color: #82071e; border-color: #b91c1c; box-shadow: 0 0 16px rgba(185,28,28,.25); }
+    body:not(.dark-mode) .dn-warn   { color: #82071e; border-color: #b91c1c; box-shadow: 0 0 16px rgba(185,28,28,.25); }
+    body:not(.dark-mode) .f-arrow   { color: #57606a; }
   </style>
 </head>
 <body>
@@ -267,6 +317,7 @@
   <span class="badge b-UPDATE" style="font-size:.7rem">UPDATE</span>
   <span class="badge b-DELETE" style="font-size:.7rem">DELETE</span>
   <span class="hdr-sub">Administración de Empresas — Base de Datos Corporativa</span>
+  <button class="theme-btn" id="theme-toggle" onclick="toggleTheme()" title="Cambiar tema">🌙</button>
 </header>
 
 <div class="layout">
@@ -1368,7 +1419,17 @@ document.addEventListener('keydown', e => {
   if ((e.ctrlKey||e.metaKey) && e.key==='Enter') { e.preventDefault(); runQuery(); }
 });
 
+function toggleTheme() {
+  const isDark = document.body.classList.toggle('dark-mode');
+  document.getElementById('theme-toggle').textContent = isDark ? '☀️' : '🌙';
+  localStorage.setItem('sql-theme', isDark ? 'dark' : 'light');
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+  if (localStorage.getItem('sql-theme') === 'dark') {
+    document.body.classList.add('dark-mode');
+    document.getElementById('theme-toggle').textContent = '☀️';
+  }
   initDB();
   buildSchema();
   buildExamples();
