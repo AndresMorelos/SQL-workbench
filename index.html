@@ -104,12 +104,12 @@
     @keyframes nodeIn  { from { opacity:0; transform:scale(0.65) translateY(12px); } to { opacity:1; transform:scale(1) translateY(0); } }
     @keyframes arrowIn { from { opacity:0; transform:translateX(-10px); } to { opacity:1; transform:translateX(0); } }
 
-    .f-node { display:flex; flex-direction:column; align-items:center; gap:6px; opacity:0; animation: nodeIn .5s cubic-bezier(0.16,1,0.3,1) forwards; }
-    .f-box  { padding:14px 22px; border-radius:12px; text-align:center; min-width:130px; font-size:.9rem; font-weight:600; line-height:1.5; cursor:default; transition:filter .2s; }
-    .f-box:hover { filter:brightness(1.15); }
-    .f-box small { font-weight:400; font-size:.74rem; display:block; word-break:break-word; max-width:175px; }
-    .f-label { font-size:.68rem; color:var(--dim); }
-    .f-arrow { font-size:2rem; color:var(--dim); padding:0 6px; line-height:1; opacity:0; animation: arrowIn .3s ease forwards; }
+    .f-node { display:flex; flex-direction:column; align-items:center; gap:7px; opacity:0; animation: nodeIn .5s cubic-bezier(0.16,1,0.3,1) forwards; }
+    .f-box  { padding:18px 30px; border-radius:16px; text-align:center; min-width:160px; font-size:1rem; font-weight:700; line-height:1.55; cursor:default; transition:filter .2s, transform .2s, box-shadow .2s; border-width:3px; }
+    .f-box:hover { filter:brightness(1.18); transform:scale(1.06); }
+    .f-box small { font-weight:500; font-size:.78rem; display:block; word-break:break-word; max-width:190px; margin-top:3px; opacity:.85; }
+    .f-label { font-size:.71rem; color:var(--dim); letter-spacing:.03em; }
+    .f-arrow { font-size:2.4rem; color:#444c56; padding:0 2px; line-height:1; opacity:0; animation: arrowIn .3s ease forwards; }
     .replay-btn { background:transparent; border:1px solid var(--border); color:var(--dim); padding:5px 16px; border-radius:20px; cursor:pointer; font-size:.76rem; transition:all .15s; }
     .replay-btn:hover { color:var(--text); border-color:var(--text); }
 
@@ -123,15 +123,15 @@
     .op-title .main-label { font-size: 1.05rem; font-weight: 700; }
     .op-title .sub-label  { font-size: .8rem; color: var(--dim); margin-top: 2px; }
 
-    .dn-table  { background: rgba(31,111,235,.1);  border: 2px solid #1f6feb; color: #58a6ff; }
-    .dn-join   { background: rgba(88,166,255,.08); border: 2px solid #58a6ff; color: #79c0ff; }
-    .dn-filter { background: rgba(158,106,3,.12);  border: 2px solid #9e6a03; color: #e3b341; }
-    .dn-sort   { background: rgba(139,148,158,.1); border: 2px solid #8b949e; color: #c9d1d9; }
-    .dn-result { background: rgba(35,134,54,.1);   border: 2px solid #238636; color: #3fb950; }
-    .dn-data   { background: rgba(88,166,255,.1);  border: 2px solid #58a6ff; color: #79c0ff; }
-    .dn-set    { background: rgba(158,106,3,.12);  border: 2px solid #9e6a03; color: #e3b341; }
-    .dn-del    { background: rgba(185,28,28,.1);   border: 2px solid #b91c1c; color: #f85149; }
-    .dn-warn   { background: rgba(185,28,28,.1);   border: 2px solid #b91c1c; color: #f85149; }
+    .dn-table  { background: rgba(31,111,235,.22);  border-color: #58a6ff; color: #a5d6ff; box-shadow: 0 0 22px rgba(31,111,235,.35); }
+    .dn-join   { background: rgba(88,166,255,.2);   border-color: #79c0ff; color: #cae8ff; box-shadow: 0 0 22px rgba(88,166,255,.3); }
+    .dn-filter { background: rgba(210,153,34,.22);  border-color: #e3b341; color: #ffd27a; box-shadow: 0 0 22px rgba(210,153,34,.35); }
+    .dn-sort   { background: rgba(139,148,158,.2);  border-color: #adbac7; color: #e6edf3; box-shadow: 0 0 18px rgba(139,148,158,.25); }
+    .dn-result { background: rgba(35,134,54,.25);   border-color: #3fb950; color: #7ee787; box-shadow: 0 0 22px rgba(35,134,54,.4); }
+    .dn-data   { background: rgba(88,166,255,.2);   border-color: #79c0ff; color: #cae8ff; box-shadow: 0 0 22px rgba(88,166,255,.3); }
+    .dn-set    { background: rgba(210,153,34,.22);  border-color: #e3b341; color: #ffd27a; box-shadow: 0 0 22px rgba(210,153,34,.35); }
+    .dn-del    { background: rgba(185,28,28,.28);   border-color: #f85149; color: #ffa198; box-shadow: 0 0 22px rgba(185,28,28,.45); }
+    .dn-warn   { background: rgba(185,28,28,.28);   border-color: #f85149; color: #ffa198; box-shadow: 0 0 22px rgba(185,28,28,.45); }
 
     /* ── Shared breakdown panel base ── */
     .bd-panel { border-radius: 8px; padding: 14px 16px; margin-top: 12px; }
