@@ -364,6 +364,89 @@
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 
+    /* ── WHERE breakdown panel ─────────────────────── */
+    .where-breakdown {
+      background: rgba(158,106,3,.07);
+      border: 1px solid rgba(158,106,3,.28);
+      border-radius: 8px;
+      padding: 14px 16px;
+      margin-top: 14px;
+    }
+    .where-title {
+      font-size: .7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .07em;
+      color: var(--dim);
+      margin-bottom: 12px;
+    }
+    .condition-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 2px;
+    }
+    .cond-idx {
+      width: 20px; height: 20px;
+      border-radius: 50%;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: .65rem; font-weight: 700;
+      color: var(--accent);
+      flex-shrink: 0; margin-top: 3px;
+    }
+    .condition-pill {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 3px 10px;
+      font-family: 'Consolas', monospace;
+      font-size: .79rem;
+      color: var(--text);
+      flex-shrink: 0;
+    }
+    .cond-human {
+      font-size: .8rem;
+      color: var(--dim);
+      padding-top: 4px;
+      line-height: 1.4;
+    }
+    .kw-field { color: #79c0ff; font-weight: 600; }
+    .kw-op    { color: var(--dim); }
+    .kw-val   { color: #a5d6ff; font-weight: 600; }
+    .op-connector {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 8px 0 8px 30px;
+    }
+    .op-sep { flex:1; height:1px; background:var(--border); max-width:30px; }
+    .op-badge-or {
+      background: rgba(248,81,73,.12);
+      border: 1px solid rgba(248,81,73,.35);
+      color: #f85149;
+      padding: 3px 10px; border-radius: 4px;
+      font-size: .73rem; font-weight: 700;
+    }
+    .op-badge-and {
+      background: rgba(31,111,235,.12);
+      border: 1px solid rgba(31,111,235,.35);
+      color: #58a6ff;
+      padding: 3px 10px; border-radius: 4px;
+      font-size: .73rem; font-weight: 700;
+    }
+    .op-rule {
+      font-size: .81rem;
+      color: var(--dim);
+      margin-top: 12px;
+      padding-top: 10px;
+      border-top: 1px solid var(--border);
+      line-height: 1.6;
+    }
+    .op-rule strong { color: var(--text); }
+
     /* Responsive */
     @media (max-width: 720px) {
       .layout { grid-template-columns: 1fr; }
@@ -654,6 +737,132 @@ function extractSet(sql) {
 }
 
 // ─────────────────────────────────────────────────
+// WHERE CLAUSE PARSER & HUMANIZER
+// ─────────────────────────────────────────────────
+
+// Split a WHERE string by a logical operator (OR / AND) at the top level
+// (respects parentheses and quoted strings)
+function splitByOp(str, op) {
+  const parts = [];
+  let depth = 0, inStr = false, strCh = '', current = '';
+  const token = ' ' + op.toUpperCase() + ' ';
+  let i = 0;
+  while (i < str.length) {
+    const ch = str[i];
+    if (inStr) {
+      current += ch;
+      if (ch === strCh) inStr = false;
+      i++; continue;
+    }
+    if (ch === '"' || ch === "'") { inStr = true; strCh = ch; current += ch; i++; continue; }
+    if (ch === '(') { depth++; current += ch; i++; continue; }
+    if (ch === ')') { depth--; current += ch; i++; continue; }
+    if (depth === 0 && str.toUpperCase().substring(i).startsWith(token)) {
+      parts.push(current.trim());
+      current = '';
+      i += token.length;
+      continue;
+    }
+    current += ch; i++;
+  }
+  if (current.trim()) parts.push(current.trim());
+  return parts;
+}
+
+// Parse a WHERE clause into { type, operator, conditions }
+function parseWhere(where) {
+  if (!where) return { type: 'none', conditions: [] };
+  const orParts = splitByOp(where, 'OR');
+  if (orParts.length > 1) return { type: 'or',  operator: 'OR',  conditions: orParts };
+  const andParts = splitByOp(where, 'AND');
+  if (andParts.length > 1) return { type: 'and', operator: 'AND', conditions: andParts };
+  return { type: 'simple', operator: null, conditions: [where.trim()] };
+}
+
+// Convert a single SQL condition into plain Spanish
+function humanizeCond(cond) {
+  cond = cond.trim();
+  const f = s => `<span class="kw-field">${esc(s)}</span>`;
+  const v = s => `<span class="kw-val">${esc(s)}</span>`;
+  const op = s => `<span class="kw-op">${s}</span>`;
+
+  let m;
+  if ((m = cond.match(/^(.+?)\s+IS\s+NOT\s+NULL$/i)))
+    return `${f(m[1].trim())} ${op('sí tiene un valor asignado')}`;
+  if ((m = cond.match(/^(.+?)\s+IS\s+NULL$/i)))
+    return `${f(m[1].trim())} ${op('no tiene ningún valor')} (NULL)`;
+  if ((m = cond.match(/^(.+?)\s+BETWEEN\s+(.+?)\s+AND\s+(.+)$/i)))
+    return `${f(m[1].trim())} ${op('está entre')} ${v(m[2].trim())} y ${v(m[3].trim())}`;
+  if ((m = cond.match(/^(.+?)\s+NOT\s+LIKE\s+(.+)$/i)))
+    return `${f(m[1].trim())} ${op('NO coincide con el patrón')} ${v(m[2].trim())}`;
+  if ((m = cond.match(/^(.+?)\s+LIKE\s+(.+)$/i)))
+    return `${f(m[1].trim())} ${op('coincide con el patrón')} ${v(m[2].trim())}`;
+  if ((m = cond.match(/^(.+?)\s+NOT\s+IN\s*\((.+)\)$/i)))
+    return `${f(m[1].trim())} ${op('NO está en la lista:')} ${v(m[2].trim())}`;
+  if ((m = cond.match(/^(.+?)\s+IN\s*\((.+)\)$/i)))
+    return `${f(m[1].trim())} ${op('está en la lista:')} ${v(m[2].trim())}`;
+
+  const opMap = [
+    ['>=','es mayor o igual a'], ['<=','es menor o igual a'],
+    ['<>','es diferente de'],    ['!=','es diferente de'],
+    ['=' ,'es igual a'],         ['>' ,'es mayor que'],
+    ['<' ,'es menor que'],
+  ];
+  for (const [sym, label] of opMap) {
+    const idx = cond.indexOf(sym);
+    if (idx > 0) {
+      return `${f(cond.substring(0, idx).trim())} ${op(label)} ${v(cond.substring(idx + sym.length).trim())}`;
+    }
+  }
+  return `<span class="kw-field">${esc(cond)}</span>`;
+}
+
+// Build the collapsible WHERE breakdown panel HTML
+function buildWhereBreakdown(parsed) {
+  if (!parsed || parsed.type === 'none') return '';
+
+  if (parsed.type === 'simple') {
+    return `<div class="where-breakdown">
+      <div class="where-title">🔍 ¿Qué hace el filtro WHERE?</div>
+      <div class="condition-row">
+        <span class="condition-pill">${esc(parsed.conditions[0])}</span>
+        <span class="cond-human">→ ${humanizeCond(parsed.conditions[0])}</span>
+      </div>
+      <div class="op-rule">💡 Solo pasan las filas donde esa condición sea <strong>verdadera</strong>. Las demás se descartan.</div>
+    </div>`;
+  }
+
+  const isOr    = parsed.type === 'or';
+  const badgeCls = isOr ? 'op-badge-or' : 'op-badge-and';
+  const badgeTxt = isOr ? 'OR — O'       : 'AND — Y';
+  const rule = isOr
+    ? '💡 <strong>OR (O):</strong> la fila pasa si cumple <strong>al menos UNA</strong> de las condiciones. Basta con que una sea verdadera.'
+    : '💡 <strong>AND (Y):</strong> la fila pasa <strong>SOLO SI CUMPLE TODAS</strong> las condiciones al mismo tiempo. Si falla una, se descarta.';
+
+  const condHtml = parsed.conditions.map((c, i) => {
+    const row = `<div class="condition-row">
+      <span class="cond-idx">${i + 1}</span>
+      <span class="condition-pill">${esc(c)}</span>
+      <span class="cond-human">${humanizeCond(c)}</span>
+    </div>`;
+    const sep = i < parsed.conditions.length - 1
+      ? `<div class="op-connector">
+           <div class="op-sep"></div>
+           <span class="${badgeCls}">${badgeTxt}</span>
+           <div class="op-sep"></div>
+         </div>`
+      : '';
+    return row + sep;
+  }).join('');
+
+  return `<div class="where-breakdown">
+    <div class="where-title">🔍 ¿Qué hace el filtro WHERE?</div>
+    ${condHtml}
+    <div class="op-rule">${rule}</div>
+  </div>`;
+}
+
+// ─────────────────────────────────────────────────
 // VISUAL EXPLANATION
 // ─────────────────────────────────────────────────
 function showExplanation(sql, type, result) {
@@ -669,25 +878,53 @@ function showExplanation(sql, type, result) {
   const tblLabel = tbl ? (SCHEMA[tbl]?.label || tbl) : '?';
   const tblIcon  = tbl ? (SCHEMA[tbl]?.icon  || '📊') : '📊';
 
-  let diagram = '', prose = '', steps = [];
+  let diagram = '', prose = '', steps = [], whereBreakdown = '';
 
   /* ── SELECT ── */
   if (type === 'SELECT') {
+    const pw = parseWhere(where);
+    whereBreakdown = buildWhereBreakdown(pw);
+
+    // Diagram: filter node label depends on operator type
+    let filterLabel = '🔍 FILTRO';
+    if (pw.type === 'or')     filterLabel = '🔍 FILTRO<br><small style="font-weight:400">con OR</small>';
+    if (pw.type === 'and')    filterLabel = '🔍 FILTRO<br><small style="font-weight:400">con AND</small>';
+    if (pw.type === 'simple') filterLabel = '🔍 FILTRO<br><small style="font-weight:400">'
+                                           + esc(pw.conditions[0].substring(0,35))
+                                           + (pw.conditions[0].length > 35 ? '…' : '') + '</small>';
+
     diagram = node(tblIcon + ' ' + tblLabel, 'dn-table', 'tabla origen')
             + arrow()
-            + (where
-               ? node('🔍 WHERE<br><small>' + esc(where) + '</small>', 'dn-filter', 'condición filtro') + arrow()
-               : '')
+            + (where ? node(filterLabel, 'dn-filter', 'condición WHERE') + arrow() : '')
             + node('📋 ' + rows + ' fila' + (rows!==1?'s':''), 'dn-result', 'resultado');
 
     prose = `La instrucción <span class="kw">SELECT</span> <strong>lee datos</strong> de la tabla <span class="tbl">${tblLabel}</span>. No modifica nada en la base de datos.`;
-    steps = [
-      `SQL accede a la tabla <strong>${tblLabel}</strong> y recorre sus filas.`,
-      where
-        ? `Aplica <strong>WHERE ${esc(where)}</strong>: sólo pasan las filas que cumplen la condición.`
-        : `Sin cláusula <strong>WHERE</strong>, se devuelven <em>todas</em> las filas.`,
-      `Retorna las columnas pedidas de las filas seleccionadas — <strong>${rows} fila${rows!==1?'s':''}</strong> en total.`,
-    ];
+
+    if (!where) {
+      steps = [
+        `SQL abre la tabla <strong>${tblLabel}</strong> y recorre <em>todas</em> sus filas de arriba a abajo.`,
+        `Sin cláusula <strong>WHERE</strong>, no se aplica ningún filtro: todas las filas pasan al resultado.`,
+        `Devuelve <strong>${rows} fila${rows!==1?'s':''}</strong> con las columnas indicadas.`,
+      ];
+    } else if (pw.type === 'or') {
+      steps = [
+        `SQL abre la tabla <strong>${tblLabel}</strong> y revisa cada fila, una por una.`,
+        `Para cada fila evalúa las <strong>${pw.conditions.length} condiciones</strong> unidas por <strong>OR</strong>: la fila pasa si <em>cualquiera</em> de ellas es verdadera (no es necesario que todas lo sean).`,
+        `Solo las filas que cumplieron al menos una condición aparecen en el resultado — <strong>${rows} fila${rows!==1?'s':''}</strong> en total.`,
+      ];
+    } else if (pw.type === 'and') {
+      steps = [
+        `SQL abre la tabla <strong>${tblLabel}</strong> y revisa cada fila, una por una.`,
+        `Para cada fila evalúa las <strong>${pw.conditions.length} condiciones</strong> unidas por <strong>AND</strong>: la fila pasa <em>solo si todas</em> son verdaderas al mismo tiempo. Si falla una, la fila se descarta.`,
+        `Solo las filas que cumplieron <em>todas</em> las condiciones aparecen en el resultado — <strong>${rows} fila${rows!==1?'s':''}</strong> en total.`,
+      ];
+    } else {
+      steps = [
+        `SQL abre la tabla <strong>${tblLabel}</strong> y revisa cada fila, una por una.`,
+        `Evalúa el filtro: ${humanizeCond(pw.conditions[0])}. Las filas donde esto sea verdadero pasan; las demás se descartan.`,
+        `Devuelve <strong>${rows} fila${rows!==1?'s':''}</strong> con las columnas indicadas.`,
+      ];
+    }
   }
 
   /* ── INSERT ── */
@@ -774,6 +1011,7 @@ function showExplanation(sql, type, result) {
       <div class="sub-label">${meta.desc} &nbsp;|&nbsp; Tabla: <strong>${tblLabel}</strong></div>
     </div>
     <div class="diagram">${diagram}</div>
+    ${whereBreakdown}
     <div class="explain-prose">${prose}</div>
     <div class="steps">${stepsHtml}</div>
   `;
