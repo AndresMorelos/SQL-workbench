@@ -84,19 +84,44 @@
     .err-tip code, .err-hint code { background: var(--bg3); border: 1px solid var(--border); border-radius: 3px; padding: 1px 5px; font-family: 'Consolas', monospace; font-style: normal; font-size: .75rem; color: var(--text); }
 
     /* Visual explanation */
-    .explain-body { padding: 18px 20px; }
+    .explain-body { padding: 0; }
+
+    /* ── EXPLAIN TABS ── */
+    .explain-nav { display: flex; background: var(--bg3); border-bottom: 1px solid var(--border); overflow-x: auto; }
+    .etab { background: transparent; border: none; border-bottom: 2px solid transparent; color: var(--dim); padding: 10px 20px; cursor: pointer; font-size: .81rem; font-weight: 600; transition: all .15s; white-space: nowrap; user-select: none; }
+    .etab:hover { color: var(--text); }
+    .etab.active { color: var(--accent); border-bottom-color: var(--accent); background: rgba(88,166,255,.04); }
+    .eview { display: none; }
+    .eview.active { display: block; animation: fadeUp .2s ease; }
+
+    /* ── ANIMATED FLOW DIAGRAM ── */
+    .flow-wrap { padding: 28px 20px 20px; display: flex; flex-direction: column; align-items: center; gap: 20px; }
+    .flow-title { text-align: center; }
+    .flow-title .main-label { font-size: 1.15rem; font-weight: 700; }
+    .flow-title .sub-label  { font-size: .82rem; color: var(--dim); margin-top: 4px; }
+    .flow-diagram { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 0; }
+
+    @keyframes nodeIn  { from { opacity:0; transform:scale(0.65) translateY(12px); } to { opacity:1; transform:scale(1) translateY(0); } }
+    @keyframes arrowIn { from { opacity:0; transform:translateX(-10px); } to { opacity:1; transform:translateX(0); } }
+
+    .f-node { display:flex; flex-direction:column; align-items:center; gap:6px; opacity:0; animation: nodeIn .5s cubic-bezier(0.16,1,0.3,1) forwards; }
+    .f-box  { padding:14px 22px; border-radius:12px; text-align:center; min-width:130px; font-size:.9rem; font-weight:600; line-height:1.5; cursor:default; transition:filter .2s; }
+    .f-box:hover { filter:brightness(1.15); }
+    .f-box small { font-weight:400; font-size:.74rem; display:block; word-break:break-word; max-width:175px; }
+    .f-label { font-size:.68rem; color:var(--dim); }
+    .f-arrow { font-size:2rem; color:var(--dim); padding:0 6px; line-height:1; opacity:0; animation: arrowIn .3s ease forwards; }
+    .replay-btn { background:transparent; border:1px solid var(--border); color:var(--dim); padding:5px 16px; border-radius:20px; cursor:pointer; font-size:.76rem; transition:all .15s; }
+    .replay-btn:hover { color:var(--text); border-color:var(--text); }
+
+    /* ── STEPS & DETAILS VIEWS ── */
+    .steps-view   { padding: 18px 20px; }
+    .details-view { padding: 10px 20px 20px; }
+    .no-details   { padding: 40px; text-align:center; color:var(--dim); font-size:.85rem; font-style:italic; }
+
+    /* (legacy op-title — kept for safety) */
     .op-title { text-align: center; margin-bottom: 18px; }
     .op-title .main-label { font-size: 1.05rem; font-weight: 700; }
     .op-title .sub-label  { font-size: .8rem; color: var(--dim); margin-top: 2px; }
-
-    /* Diagram */
-    .diagram { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 0; margin-bottom: 6px; }
-    .d-node  { display: flex; flex-direction: column; align-items: center; gap: 4px; }
-    .d-box   { padding: 9px 14px; border-radius: 8px; text-align: center; min-width: 100px; font-size: .82rem; font-weight: 600; line-height: 1.4; }
-    .d-box small { font-weight: 400; font-size: .72rem; display: block; word-break: break-word; max-width: 160px; }
-    .d-label { font-size: .68rem; color: var(--dim); }
-    .d-arrow { font-size: 1.3rem; color: var(--dim); padding: 0 6px; line-height: 1; }
-    .d-arrow.red { color: #f85149; }
 
     .dn-table  { background: rgba(31,111,235,.1);  border: 2px solid #1f6feb; color: #58a6ff; }
     .dn-join   { background: rgba(88,166,255,.08); border: 2px solid #58a6ff; color: #79c0ff; }
@@ -933,6 +958,7 @@ function showExplanation(sql, type, result, beforeRows, afterRows) {
   const tblLabel = tbl ? (SCHEMA[tbl]?.label || tbl) : '?';
   const tblIcon  = tbl ? (SCHEMA[tbl]?.icon  || '📊') : '📊';
 
+  _s = 0;
   let diagram='', prose='', steps=[], extras='';
 
   /* ── SELECT ── */
@@ -1052,7 +1078,7 @@ function showExplanation(sql, type, result, beforeRows, afterRows) {
             + arrow(noWhere?'#f85149':null)
             + (where ? node('🔍 WHERE<br><small>'+esc(where)+'</small>','dn-filter','filas a eliminar')
                      : node('⚠️ TODAS LAS FILAS','dn-warn','¡sin filtro = todo!'))
-            + `<div class="d-arrow red">&rarr;</div>`
+            + arrow('#f85149')
             + node('🗑️ ELIMINAR<br><small>'+rows+' fila'+(rows!==1?'s':'')+'</small>','dn-del','⚠️ irreversible');
 
     extras = buildWhereBreakdown(parseWhere(where))
@@ -1074,15 +1100,34 @@ function showExplanation(sql, type, result, beforeRows, afterRows) {
     `<div class="step"><div class="step-n">${i+1}</div><div class="step-t">${s}</div></div>`
   ).join('');
 
+  _lastDiagramHtml = diagram;
   document.getElementById('explain-body').innerHTML = `
-    <div class="op-title">
-      <div class="main-label" style="color:${meta.color}">${meta.emoji} ${meta.title}</div>
-      <div class="sub-label">${meta.desc} &nbsp;|&nbsp; Tabla: <strong>${tblLabel}</strong></div>
+    <div class="explain-nav">
+      <button class="etab active" onclick="switchExplainView('flow',this)">📊 Flujo</button>
+      <button class="etab" onclick="switchExplainView('steps',this)">📋 Pasos</button>
+      <button class="etab" onclick="switchExplainView('details',this)">🔍 Detalles</button>
     </div>
-    <div class="diagram">${diagram}</div>
-    ${extras}
-    <div class="explain-prose">${prose}</div>
-    <div class="steps">${stepsHtml}</div>
+    <div id="ev-flow" class="eview active">
+      <div class="flow-wrap">
+        <div class="flow-title">
+          <div class="main-label" style="color:${meta.color}">${meta.emoji} ${meta.title}</div>
+          <div class="sub-label">${meta.desc} &nbsp;|&nbsp; Tabla: <strong>${tblLabel}</strong></div>
+        </div>
+        <div class="flow-diagram" id="fdc">${diagram}</div>
+        <button class="replay-btn" onclick="replayDiagram()">↺ Repetir animación</button>
+      </div>
+    </div>
+    <div id="ev-steps" class="eview">
+      <div class="steps-view">
+        <div class="explain-prose">${prose}</div>
+        <div class="steps">${stepsHtml}</div>
+      </div>
+    </div>
+    <div id="ev-details" class="eview">
+      <div class="details-view">
+        ${extras || '<div class="no-details">Esta consulta no tiene cláusulas adicionales para analizar.</div>'}
+      </div>
+    </div>
   `;
 
   const badge = document.getElementById('op-badge');
@@ -1263,11 +1308,29 @@ function loadEx(i) { document.getElementById('editor').value = EXAMPLES[i].sql; 
 // ═══════════════════════════════════════════════════
 // HELPERS
 // ═══════════════════════════════════════════════════
+let _s = 0, _lastDiagramHtml = '';
+
 function node(label, cls, sub) {
-  return `<div class="d-node"><div class="d-box ${cls}">${label}</div>${sub?`<div class="d-label">${sub}</div>`:''}</div>`;
+  const d = (_s++ * 0.15).toFixed(2);
+  return `<div class="f-node" style="animation-delay:${d}s"><div class="f-box ${cls}">${label}</div>${sub?`<div class="f-label">${sub}</div>`:''}</div>`;
 }
 function arrow(color) {
-  return `<div class="d-arrow"${color?` style="color:${color}"`:''}>→</div>`;
+  const d = ((_s - 0.5) * 0.15).toFixed(2);
+  const style = `animation-delay:${d}s${color?`;color:${color}`:''}`;
+  return `<div class="f-arrow" style="${style}">→</div>`;
+}
+function switchExplainView(view, btn) {
+  document.querySelectorAll('.etab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.eview').forEach(v => v.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('ev-' + view)?.classList.add('active');
+}
+function replayDiagram() {
+  const el = document.getElementById('fdc');
+  if (!el || !_lastDiagramHtml) return;
+  el.innerHTML = '';
+  void el.offsetWidth;
+  el.innerHTML = _lastDiagramHtml;
 }
 function esc(str) {
   const d = document.createElement('div'); d.textContent = str; return d.innerHTML;
