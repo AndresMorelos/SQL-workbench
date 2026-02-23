@@ -1,0 +1,973 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SQL Trainer — Operaciones CRUD</title>
+  <script src="https://cdn.jsdelivr.net/npm/alasql@4/dist/alasql.min.js"></script>
+  <style>
+    :root {
+      --bg:       #0d1117;
+      --bg2:      #161b22;
+      --bg3:      #21262d;
+      --border:   #30363d;
+      --text:     #c9d1d9;
+      --dim:      #8b949e;
+      --accent:   #58a6ff;
+      --c-select: #1f6feb;
+      --c-insert: #238636;
+      --c-update: #9e6a03;
+      --c-delete: #b91c1c;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── HEADER ─────────────────────────────────── */
+    header {
+      background: var(--bg2);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+    header h1 { font-size: 1.25rem; font-weight: 700; color: var(--accent); }
+    .hdr-sub  { font-size: 0.8rem; color: var(--dim); margin-left: auto; }
+
+    /* ── LAYOUT ─────────────────────────────────── */
+    .layout {
+      display: grid;
+      grid-template-columns: 270px 1fr;
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    /* ── SIDEBAR ────────────────────────────────── */
+    .sidebar {
+      background: var(--bg2);
+      border-right: 1px solid var(--border);
+      overflow-y: auto;
+      padding: 14px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .sec-label {
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .07em;
+      color: var(--dim);
+      padding: 10px 4px 4px;
+    }
+
+    /* Schema tree */
+    .tbl-card { background: var(--bg3); border: 1px solid var(--border); border-radius: 6px; overflow: hidden; margin-bottom: 4px; }
+    .tbl-head {
+      padding: 7px 10px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      user-select: none;
+    }
+    .tbl-head:hover { background: #2d333b; }
+    .tbl-head .arrow { margin-left: auto; font-size: .7rem; color: var(--dim); transition: transform .15s; }
+    .tbl-head.open .arrow { transform: rotate(90deg); }
+    .col-list { display: none; padding: 2px 0 6px; }
+    .col-list.open { display: block; }
+    .col-row {
+      padding: 2px 10px 2px 30px;
+      font-size: 0.76rem;
+      font-family: 'Consolas', monospace;
+      color: var(--dim);
+      display: flex;
+      justify-content: space-between;
+    }
+    .col-type { color: #79c0ff; font-size: .7rem; }
+
+    /* Example buttons */
+    .ex-btn {
+      width: 100%;
+      text-align: left;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 7px 10px;
+      margin-bottom: 3px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.77rem;
+      font-family: 'Consolas', monospace;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      transition: border-color .12s;
+    }
+    .ex-btn:hover { border-color: var(--accent); }
+
+    /* Op badges */
+    .badge {
+      font-size: .62rem;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 700;
+      font-family: system-ui;
+      flex-shrink: 0;
+    }
+    .b-SELECT { background: rgba(31,111,235,.2); color: #58a6ff; border: 1px solid rgba(31,111,235,.4); }
+    .b-INSERT { background: rgba(35,134,54,.2);  color: #3fb950; border: 1px solid rgba(35,134,54,.4); }
+    .b-UPDATE { background: rgba(158,106,3,.25); color: #e3b341; border: 1px solid rgba(158,106,3,.5); }
+    .b-DELETE { background: rgba(185,28,28,.2);  color: #f85149; border: 1px solid rgba(185,28,28,.4); }
+
+    /* ── MAIN ───────────────────────────────────── */
+    .main {
+      overflow-y: auto;
+      padding: 18px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    /* Panel shell */
+    .panel {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .panel-header {
+      padding: 9px 14px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: .82rem;
+      font-weight: 600;
+      color: var(--dim);
+    }
+    .panel-header .ml { margin-left: auto; }
+
+    /* Editor */
+    textarea#editor {
+      display: block;
+      width: 100%;
+      background: transparent;
+      border: none;
+      color: #e6edf3;
+      font-family: 'Consolas', 'Courier New', monospace;
+      font-size: .93rem;
+      padding: 14px 16px;
+      resize: vertical;
+      min-height: 90px;
+      outline: none;
+      line-height: 1.65;
+    }
+    .editor-foot {
+      padding: 9px 14px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .btn-run {
+      background: #238636;
+      color: #fff;
+      border: none;
+      padding: 7px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 700;
+      font-size: .85rem;
+      transition: background .12s;
+    }
+    .btn-run:hover { background: #2ea043; }
+    .btn-sec {
+      background: transparent;
+      color: var(--dim);
+      border: 1px solid var(--border);
+      padding: 7px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: .82rem;
+      transition: all .12s;
+    }
+    .btn-sec:hover { color: var(--text); border-color: var(--text); }
+    .kbd-hint { margin-left: auto; font-size: .72rem; color: var(--dim); }
+    kbd { background: var(--bg3); border: 1px solid var(--border); border-radius: 3px; padding: 1px 5px; font-size: .7rem; font-family: system-ui; }
+
+    /* Error box */
+    .err-box {
+      margin: 0 14px 14px;
+      background: rgba(248,81,73,.08);
+      border: 1px solid rgba(248,81,73,.35);
+      border-radius: 6px;
+      padding: 10px 14px;
+      color: #f85149;
+      font-family: 'Consolas', monospace;
+      font-size: .82rem;
+    }
+
+    /* Visual explanation */
+    .explain-body { padding: 18px 20px; }
+
+    .op-title {
+      text-align: center;
+      margin-bottom: 18px;
+    }
+    .op-title .main-label { font-size: 1.05rem; font-weight: 700; }
+    .op-title .sub-label  { font-size: .8rem; color: var(--dim); margin-top: 2px; }
+
+    .diagram {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 0;
+      margin-bottom: 18px;
+    }
+    .d-node { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+    .d-box {
+      padding: 9px 14px;
+      border-radius: 8px;
+      text-align: center;
+      min-width: 110px;
+      font-size: .82rem;
+      font-weight: 600;
+      line-height: 1.4;
+    }
+    .d-box small { font-weight: 400; font-size: .73rem; display: block; word-break: break-word; max-width: 160px; }
+    .d-label { font-size: .68rem; color: var(--dim); }
+    .d-arrow { font-size: 1.3rem; color: var(--dim); padding: 0 6px; line-height: 1; }
+
+    .dn-table  { background: rgba(31,111,235,.1);  border: 2px solid #1f6feb; color: #58a6ff; }
+    .dn-filter { background: rgba(158,106,3,.12);  border: 2px solid #9e6a03; color: #e3b341; }
+    .dn-result { background: rgba(35,134,54,.1);   border: 2px solid #238636; color: #3fb950; }
+    .dn-data   { background: rgba(88,166,255,.1);  border: 2px solid #58a6ff; color: #79c0ff; }
+    .dn-set    { background: rgba(158,106,3,.12);  border: 2px solid #9e6a03; color: #e3b341; }
+    .dn-del    { background: rgba(185,28,28,.1);   border: 2px solid #b91c1c; color: #f85149; }
+    .dn-warn   { background: rgba(185,28,28,.1);   border: 2px solid #b91c1c; color: #f85149; }
+
+    .explain-prose {
+      background: var(--bg3);
+      border-radius: 6px;
+      padding: 11px 14px;
+      font-size: .83rem;
+      line-height: 1.7;
+      color: var(--dim);
+      margin-bottom: 14px;
+    }
+    .explain-prose strong { color: var(--text); }
+    .kw  { color: #ff7b72; font-weight: 700; }
+    .tbl { color: #79c0ff; }
+
+    .steps { display: flex; flex-direction: column; gap: 7px; }
+    .step  { display: flex; gap: 10px; align-items: flex-start; }
+    .step-n {
+      width: 22px; height: 22px;
+      border-radius: 50%;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: .68rem; font-weight: 700;
+      flex-shrink: 0;
+      color: var(--accent);
+    }
+    .step-t { padding-top: 2px; font-size: .82rem; color: var(--dim); line-height: 1.5; }
+    .step-t strong { color: var(--text); }
+    .warn { color: #f85149 !important; }
+
+    /* Success bar */
+    .ok-bar {
+      padding: 12px 16px;
+      font-size: .85rem;
+      font-weight: 600;
+    }
+
+    /* Results table */
+    .info-bar {
+      padding: 7px 14px;
+      background: var(--bg3);
+      border-bottom: 1px solid var(--border);
+      font-size: .77rem;
+      color: var(--dim);
+      display: flex;
+      gap: 14px;
+    }
+    .tbl-wrap { overflow-x: auto; }
+    table.dt {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: .82rem;
+    }
+    table.dt th {
+      background: var(--bg3);
+      padding: 7px 12px;
+      text-align: left;
+      font-weight: 600;
+      color: var(--dim);
+      border-bottom: 2px solid var(--border);
+      white-space: nowrap;
+    }
+    table.dt td {
+      padding: 6px 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    table.dt tr:last-child td { border-bottom: none; }
+    table.dt tr:hover td { background: var(--bg3); }
+    .null-v { color: var(--dim); font-style: italic; font-size: .75rem; }
+    .empty-msg { padding: 20px; text-align: center; color: var(--dim); font-size: .85rem; }
+
+    /* DB State tabs */
+    .tabs {
+      display: flex;
+      background: var(--bg3);
+      border-bottom: 1px solid var(--border);
+      overflow-x: auto;
+    }
+    .tab {
+      padding: 8px 16px;
+      cursor: pointer;
+      font-size: .8rem;
+      color: var(--dim);
+      border-bottom: 2px solid transparent;
+      white-space: nowrap;
+      transition: all .12s;
+      user-select: none;
+    }
+    .tab:hover { color: var(--text); }
+    .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+    .tab-pane { display: none; }
+    .tab-pane.active { display: block; }
+
+    /* Animations */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .fade { animation: fadeUp .25s ease; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    /* Responsive */
+    @media (max-width: 720px) {
+      .layout { grid-template-columns: 1fr; }
+      .sidebar { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════
+     HEADER
+══════════════════════════════════════════════════ -->
+<header>
+  <span style="font-size:1.3rem">🗄️</span>
+  <h1>SQL Trainer</h1>
+  <span class="badge b-SELECT" style="font-size:.7rem">SELECT</span>
+  <span class="badge b-INSERT" style="font-size:.7rem">INSERT</span>
+  <span class="badge b-UPDATE" style="font-size:.7rem">UPDATE</span>
+  <span class="badge b-DELETE" style="font-size:.7rem">DELETE</span>
+  <span class="hdr-sub">Administración de Empresas — Base de Datos Corporativa</span>
+</header>
+
+<div class="layout">
+
+  <!-- ══════════════════════════════════════════════
+       SIDEBAR
+  ══════════════════════════════════════════════ -->
+  <aside class="sidebar">
+    <div class="sec-label">📊 Tablas de la Base de Datos</div>
+    <div id="schema"></div>
+
+    <div class="sec-label">📝 Consultas de Ejemplo</div>
+    <div id="examples"></div>
+  </aside>
+
+  <!-- ══════════════════════════════════════════════
+       MAIN
+  ══════════════════════════════════════════════ -->
+  <main class="main">
+
+    <!-- SQL Editor -->
+    <div class="panel" id="p-editor">
+      <div class="panel-header">
+        ✏️ Editor SQL
+        <span class="ml kbd-hint"><kbd>Ctrl</kbd>+<kbd>Enter</kbd> para ejecutar</span>
+      </div>
+      <textarea id="editor" spellcheck="false"
+        placeholder="-- Escribe tu consulta SQL aquí&#10;SELECT * FROM empleados;"></textarea>
+      <div class="editor-foot">
+        <button class="btn-run" onclick="runQuery()">▶ Ejecutar</button>
+        <button class="btn-sec" onclick="resetDB()">↺ Reiniciar BD</button>
+        <button class="btn-sec" onclick="clearEditor()">✕ Limpiar</button>
+      </div>
+      <div id="err-display"></div>
+    </div>
+
+    <!-- Visual Explanation (hidden until query runs) -->
+    <div class="panel fade" id="p-explain" style="display:none">
+      <div class="panel-header">
+        🔍 Explicación Visual
+        <span id="op-badge" class="badge b-SELECT ml">SELECT</span>
+      </div>
+      <div class="explain-body" id="explain-body"></div>
+    </div>
+
+    <!-- Results (hidden until query runs) -->
+    <div class="panel fade" id="p-results" style="display:none">
+      <div class="panel-header">📋 Resultado de la Consulta</div>
+      <div id="results-info" class="info-bar"></div>
+      <div class="tbl-wrap" id="results-table"></div>
+    </div>
+
+    <!-- DB State Viewer -->
+    <div class="panel">
+      <div class="panel-header">
+        🗃️ Estado Actual de la Base de Datos
+        <button class="btn-sec ml" style="font-size:.72rem;padding:3px 9px" onclick="refreshState()">↺ Actualizar</button>
+      </div>
+      <div class="tabs" id="state-tabs"></div>
+      <div id="state-panes"></div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     JAVASCRIPT
+══════════════════════════════════════════════════ -->
+<script>
+// ─────────────────────────────────────────────────
+// SCHEMA DEFINITION
+// ─────────────────────────────────────────────────
+const SCHEMA = {
+  departamentos: {
+    icon: '🏢', label: 'Departamentos',
+    cols: [
+      { name: 'id_departamento', type: 'INT',    pk: true },
+      { name: 'nombre',          type: 'STRING'           },
+      { name: 'ubicacion',       type: 'STRING'           },
+      { name: 'presupuesto_anual', type: 'FLOAT'          },
+    ]
+  },
+  empleados: {
+    icon: '👤', label: 'Empleados',
+    cols: [
+      { name: 'id_empleado',       type: 'INT',    pk: true },
+      { name: 'nombre',            type: 'STRING'           },
+      { name: 'apellido',          type: 'STRING'           },
+      { name: 'email',             type: 'STRING'           },
+      { name: 'cargo',             type: 'STRING'           },
+      { name: 'salario',           type: 'FLOAT'            },
+      { name: 'id_departamento',   type: 'INT',    fk: 'departamentos' },
+      { name: 'fecha_contratacion',type: 'STRING'           },
+    ]
+  },
+  proyectos: {
+    icon: '📁', label: 'Proyectos',
+    cols: [
+      { name: 'id_proyecto',    type: 'INT',    pk: true },
+      { name: 'nombre',         type: 'STRING'           },
+      { name: 'estado',         type: 'STRING'           },
+      { name: 'presupuesto',    type: 'FLOAT'            },
+      { name: 'id_departamento',type: 'INT',    fk: 'departamentos' },
+      { name: 'fecha_inicio',   type: 'STRING'           },
+    ]
+  },
+  asignaciones: {
+    icon: '📋', label: 'Asignaciones',
+    cols: [
+      { name: 'id_empleado', type: 'INT', fk: 'empleados' },
+      { name: 'id_proyecto', type: 'INT', fk: 'proyectos' },
+      { name: 'rol',         type: 'STRING' },
+      { name: 'horas_asignadas', type: 'INT' },
+    ]
+  }
+};
+
+// ─────────────────────────────────────────────────
+// SEED DATA
+// ─────────────────────────────────────────────────
+const SEED = {
+  departamentos: [
+    { id_departamento: 1, nombre: 'Recursos Humanos', ubicacion: 'Piso 2', presupuesto_anual: 250000 },
+    { id_departamento: 2, nombre: 'Tecnología',       ubicacion: 'Piso 4', presupuesto_anual: 500000 },
+    { id_departamento: 3, nombre: 'Finanzas',         ubicacion: 'Piso 3', presupuesto_anual: 400000 },
+    { id_departamento: 4, nombre: 'Marketing',        ubicacion: 'Piso 1', presupuesto_anual: 300000 },
+    { id_departamento: 5, nombre: 'Operaciones',      ubicacion: 'Piso 5', presupuesto_anual: 450000 },
+  ],
+  empleados: [
+    { id_empleado:1, nombre:'Ana',      apellido:'García',    email:'a.garcia@corp.com',    cargo:'Gerente RRHH',       salario:75000, id_departamento:1, fecha_contratacion:'2019-03-15' },
+    { id_empleado:2, nombre:'Carlos',   apellido:'Martínez',  email:'c.martinez@corp.com',  cargo:'Desarrollador Senior',salario:85000, id_departamento:2, fecha_contratacion:'2020-07-01' },
+    { id_empleado:3, nombre:'María',    apellido:'López',     email:'m.lopez@corp.com',     cargo:'Analista Financiero', salario:68000, id_departamento:3, fecha_contratacion:'2021-01-20' },
+    { id_empleado:4, nombre:'Jorge',    apellido:'Ramírez',   email:'j.ramirez@corp.com',   cargo:'Director Marketing',  salario:92000, id_departamento:4, fecha_contratacion:'2018-11-05' },
+    { id_empleado:5, nombre:'Lucía',    apellido:'Fernández', email:'l.fernandez@corp.com', cargo:'Desarrolladora Junior',salario:52000, id_departamento:2, fecha_contratacion:'2023-02-14' },
+    { id_empleado:6, nombre:'Roberto',  apellido:'Sánchez',   email:'r.sanchez@corp.com',   cargo:'Contador',            salario:61000, id_departamento:3, fecha_contratacion:'2022-06-30' },
+    { id_empleado:7, nombre:'Patricia', apellido:'Torres',    email:'p.torres@corp.com',    cargo:'Jefe Operaciones',    salario:79000, id_departamento:5, fecha_contratacion:'2020-09-12' },
+    { id_empleado:8, nombre:'Diego',    apellido:'Vargas',    email:'d.vargas@corp.com',    cargo:'Especialista RRHH',   salario:58000, id_departamento:1, fecha_contratacion:'2022-03-07' },
+  ],
+  proyectos: [
+    { id_proyecto:1, nombre:'Sistema ERP',         estado:'En progreso', presupuesto:120000, id_departamento:2, fecha_inicio:'2024-01-15' },
+    { id_proyecto:2, nombre:'Campaña Digital 2025',estado:'Planeado',    presupuesto:45000,  id_departamento:4, fecha_inicio:'2025-03-01' },
+    { id_proyecto:3, nombre:'Auditoría Anual',     estado:'Completado',  presupuesto:30000,  id_departamento:3, fecha_inicio:'2024-10-01' },
+    { id_proyecto:4, nombre:'Capacitación RRHH',   estado:'En progreso', presupuesto:18000,  id_departamento:1, fecha_inicio:'2024-08-20' },
+    { id_proyecto:5, nombre:'Automatización Ops',  estado:'En progreso', presupuesto:95000,  id_departamento:5, fecha_inicio:'2024-11-01' },
+  ],
+  asignaciones: [
+    { id_empleado:2, id_proyecto:1, rol:'Líder Técnico', horas_asignadas:160 },
+    { id_empleado:5, id_proyecto:1, rol:'Desarrolladora', horas_asignadas:120 },
+    { id_empleado:4, id_proyecto:2, rol:'Director',       horas_asignadas:80  },
+    { id_empleado:3, id_proyecto:3, rol:'Analista',       horas_asignadas:100 },
+    { id_empleado:6, id_proyecto:3, rol:'Contador',       horas_asignadas:90  },
+    { id_empleado:1, id_proyecto:4, rol:'Coordinadora',   horas_asignadas:60  },
+    { id_empleado:8, id_proyecto:4, rol:'Facilitador',    horas_asignadas:45  },
+    { id_empleado:7, id_proyecto:5, rol:'Jefa de Proyecto',horas_asignadas:140},
+  ]
+};
+
+// ─────────────────────────────────────────────────
+// EXAMPLE QUERIES
+// ─────────────────────────────────────────────────
+const EXAMPLES = [
+  { type:'SELECT', label:'Ver todos los empleados',
+    sql:'SELECT * FROM empleados;' },
+  { type:'SELECT', label:'Empleados con salario alto',
+    sql:'SELECT nombre, apellido, cargo, salario\nFROM empleados\nWHERE salario > 70000\nORDER BY salario DESC;' },
+  { type:'SELECT', label:'Empleados con su departamento (JOIN)',
+    sql:'SELECT e.nombre, e.apellido, e.cargo, d.nombre AS departamento\nFROM empleados e\nJOIN departamentos d ON e.id_departamento = d.id_departamento;' },
+  { type:'SELECT', label:'Proyectos en progreso',
+    sql:"SELECT * FROM proyectos\nWHERE estado = 'En progreso';"},
+  { type:'SELECT', label:'Asignaciones con empleado y proyecto',
+    sql:'SELECT e.nombre, e.apellido, p.nombre AS proyecto, a.rol, a.horas_asignadas\nFROM asignaciones a\nJOIN empleados  e ON a.id_empleado = e.id_empleado\nJOIN proyectos  p ON a.id_proyecto = p.id_proyecto;' },
+  { type:'INSERT', label:'Insertar nuevo empleado',
+    sql:"INSERT INTO empleados VALUES (\n  9, 'Sofía', 'Morales', 's.morales@corp.com',\n  'Analista de Datos', 65000, 2, '2025-01-10'\n);"},
+  { type:'INSERT', label:'Insertar nuevo departamento',
+    sql:"INSERT INTO departamentos VALUES (\n  6, 'Legal', 'Piso 6', 200000\n);"},
+  { type:'INSERT', label:'Insertar nuevo proyecto',
+    sql:"INSERT INTO proyectos VALUES (\n  6, 'App Móvil', 'Planeado', 75000, 2, '2025-06-01'\n);"},
+  { type:'UPDATE', label:'Actualizar salario de empleado',
+    sql:'UPDATE empleados\nSET salario = 72000\nWHERE id_empleado = 3;' },
+  { type:'UPDATE', label:'Marcar proyecto como completado',
+    sql:"UPDATE proyectos\nSET estado = 'Completado'\nWHERE id_proyecto = 1;"},
+  { type:'UPDATE', label:'Aumento de 10% al depto. Tecnología',
+    sql:'UPDATE empleados\nSET salario = salario * 1.10\nWHERE id_departamento = 2;'},
+  { type:'DELETE', label:'Eliminar empleado por ID',
+    sql:'DELETE FROM empleados\nWHERE id_empleado = 8;'},
+  { type:'DELETE', label:'Eliminar proyectos completados',
+    sql:"DELETE FROM proyectos\nWHERE estado = 'Completado';"},
+];
+
+// ─────────────────────────────────────────────────
+// OPERATION METADATA
+// ─────────────────────────────────────────────────
+const OP_META = {
+  SELECT: { color:'#58a6ff', badge:'b-SELECT', emoji:'🔍', title:'CONSULTA DE DATOS',    desc:'Lee filas de la base de datos sin modificarla.' },
+  INSERT: { color:'#3fb950', badge:'b-INSERT', emoji:'➕', title:'INSERCIÓN DE DATOS',   desc:'Agrega una o más filas nuevas a una tabla.' },
+  UPDATE: { color:'#e3b341', badge:'b-UPDATE', emoji:'✏️', title:'ACTUALIZACIÓN DE DATOS',desc:'Modifica valores en filas ya existentes.' },
+  DELETE: { color:'#f85149', badge:'b-DELETE', emoji:'🗑️', title:'ELIMINACIÓN DE DATOS', desc:'Borra filas permanentemente de la tabla.' },
+};
+
+// ─────────────────────────────────────────────────
+// DB INIT
+// ─────────────────────────────────────────────────
+function initDB() {
+  ['asignaciones','empleados','proyectos','departamentos'].forEach(t => {
+    try { alasql(`DROP TABLE IF EXISTS ${t}`); } catch(_) {}
+  });
+  alasql('CREATE TABLE departamentos (id_departamento INT, nombre STRING, ubicacion STRING, presupuesto_anual FLOAT)');
+  alasql('CREATE TABLE empleados (id_empleado INT, nombre STRING, apellido STRING, email STRING, cargo STRING, salario FLOAT, id_departamento INT, fecha_contratacion STRING)');
+  alasql('CREATE TABLE proyectos (id_proyecto INT, nombre STRING, estado STRING, presupuesto FLOAT, id_departamento INT, fecha_inicio STRING)');
+  alasql('CREATE TABLE asignaciones (id_empleado INT, id_proyecto INT, rol STRING, horas_asignadas INT)');
+  for (const [tbl, rows] of Object.entries(SEED)) {
+    alasql(`INSERT INTO ${tbl} SELECT * FROM ?`, [rows]);
+  }
+}
+
+// ─────────────────────────────────────────────────
+// QUERY EXECUTION
+// ─────────────────────────────────────────────────
+function runQuery() {
+  const sql = document.getElementById('editor').value.trim();
+  if (!sql) return;
+
+  // Clear previous panels
+  hide('p-explain'); hide('p-results');
+  document.getElementById('err-display').innerHTML = '';
+
+  try {
+    const type  = queryType(sql);
+    const result = alasql(sql);
+    showExplanation(sql, type, result);
+    showResults(sql, type, result);
+    refreshState();
+  } catch (e) {
+    document.getElementById('err-display').innerHTML =
+      `<div class="err-box fade">❌ <strong>Error SQL:</strong> ${esc(e.message)}</div>`;
+  }
+}
+
+function queryType(sql) {
+  const u = sql.trim().toUpperCase();
+  if (u.startsWith('SELECT')) return 'SELECT';
+  if (u.startsWith('INSERT')) return 'INSERT';
+  if (u.startsWith('UPDATE')) return 'UPDATE';
+  if (u.startsWith('DELETE')) return 'DELETE';
+  return 'OTHER';
+}
+
+function extractTable(sql) {
+  const patterns = [
+    /\bFROM\s+(\w+)/i,
+    /\bINTO\s+(\w+)/i,
+    /\bUPDATE\s+(\w+)/i,
+    /\bDELETE\s+FROM\s+(\w+)/i,
+  ];
+  for (const p of patterns) {
+    const m = sql.match(p);
+    if (m) return m[1].toLowerCase();
+  }
+  return null;
+}
+function extractWhere(sql) {
+  const m = sql.match(/\bWHERE\s+(.+?)(?:\bORDER\b|\bGROUP\b|\bLIMIT\b|\bHAVING\b|;|$)/is);
+  return m ? m[1].trim() : null;
+}
+function extractSet(sql) {
+  const m = sql.match(/\bSET\s+(.+?)(?:\bWHERE\b|;|$)/is);
+  return m ? m[1].trim() : null;
+}
+
+// ─────────────────────────────────────────────────
+// VISUAL EXPLANATION
+// ─────────────────────────────────────────────────
+function showExplanation(sql, type, result) {
+  const meta = OP_META[type];
+  if (!meta) return;
+
+  const tbl     = extractTable(sql);
+  const where   = extractWhere(sql);
+  const set     = extractSet(sql);
+  const rows    = type === 'SELECT' && Array.isArray(result) ? result.length
+                : typeof result === 'number' ? result : 1;
+
+  const tblLabel = tbl ? (SCHEMA[tbl]?.label || tbl) : '?';
+  const tblIcon  = tbl ? (SCHEMA[tbl]?.icon  || '📊') : '📊';
+
+  let diagram = '', prose = '', steps = [];
+
+  /* ── SELECT ── */
+  if (type === 'SELECT') {
+    diagram = node(tblIcon + ' ' + tblLabel, 'dn-table', 'tabla origen')
+            + arrow()
+            + (where
+               ? node('🔍 WHERE<br><small>' + esc(where) + '</small>', 'dn-filter', 'condición filtro') + arrow()
+               : '')
+            + node('📋 ' + rows + ' fila' + (rows!==1?'s':''), 'dn-result', 'resultado');
+
+    prose = `La instrucción <span class="kw">SELECT</span> <strong>lee datos</strong> de la tabla <span class="tbl">${tblLabel}</span>. No modifica nada en la base de datos.`;
+    steps = [
+      `SQL accede a la tabla <strong>${tblLabel}</strong> y recorre sus filas.`,
+      where
+        ? `Aplica <strong>WHERE ${esc(where)}</strong>: sólo pasan las filas que cumplen la condición.`
+        : `Sin cláusula <strong>WHERE</strong>, se devuelven <em>todas</em> las filas.`,
+      `Retorna las columnas pedidas de las filas seleccionadas — <strong>${rows} fila${rows!==1?'s':''}</strong> en total.`,
+    ];
+  }
+
+  /* ── INSERT ── */
+  else if (type === 'INSERT') {
+    const vm = sql.match(/VALUES\s*\(([^)]+)\)/i);
+    const vStr = vm ? esc(vm[1].substring(0,55)) + (vm[1].length>55?'…':'') : '…';
+    diagram = node('📝 NUEVOS VALORES<br><small>' + vStr + '</small>', 'dn-data', 'datos a insertar')
+            + arrow()
+            + node(tblIcon + ' ' + tblLabel, 'dn-table', 'tabla destino')
+            + arrow()
+            + node('✅ +1 fila', 'dn-result', 'fila agregada');
+
+    prose = `<span class="kw">INSERT INTO</span> <strong>agrega una nueva fila</strong> a la tabla <span class="tbl">${tblLabel}</span>.`;
+    steps = [
+      `SQL toma los valores indicados en <strong>VALUES (…)</strong>.`,
+      `Verifica que los datos coincidan con las columnas de <strong>${tblLabel}</strong>.`,
+      `Crea una fila nueva y la añade a la tabla.`,
+      `La tabla <strong>${tblLabel}</strong> ahora tiene una fila más.`,
+    ];
+  }
+
+  /* ── UPDATE ── */
+  else if (type === 'UPDATE') {
+    const setStr = set ? esc(set.substring(0,50)) + (set.length>50?'…':'') : '…';
+    const noWhere = !where;
+    diagram = node(tblIcon + ' ' + tblLabel, 'dn-table', 'tabla a modificar')
+            + arrow(noWhere ? '#f85149' : null)
+            + (where
+               ? node('🔍 WHERE<br><small>' + esc(where) + '</small>', 'dn-filter', 'filas seleccionadas')
+               : node('⚠️ TODAS LAS FILAS', 'dn-warn', '¡sin filtro = todo!'))
+            + arrow()
+            + node('✏️ SET<br><small>' + setStr + '</small>', 'dn-set', 'cambios aplicados')
+            + arrow()
+            + node('✅ ' + rows + ' fila' + (rows!==1?'s':''), 'dn-result', 'actualizadas');
+
+    prose = `<span class="kw">UPDATE</span> <strong>modifica valores existentes</strong> en <span class="tbl">${tblLabel}</span>.`
+          + (noWhere ? ' <strong class="warn">⚠️ Sin WHERE se modifican TODAS las filas.</strong>' : '');
+    steps = [
+      `SQL apunta a la tabla <strong>${tblLabel}</strong>.`,
+      where
+        ? `<strong>WHERE ${esc(where)}</strong> limita cuáles filas serán cambiadas.`
+        : `<strong class="warn">⚠️ No hay WHERE → se actualizan TODAS las filas de la tabla.</strong>`,
+      `Aplica los cambios indicados en <strong>SET ${setStr}</strong>.`,
+      `<strong>${rows} fila${rows!==1?'s':''}</strong> actualizada${rows!==1?'s':''}.`,
+    ];
+  }
+
+  /* ── DELETE ── */
+  else if (type === 'DELETE') {
+    const noWhere = !where;
+    diagram = node(tblIcon + ' ' + tblLabel, 'dn-table', 'tabla origen')
+            + arrow(noWhere ? '#f85149' : null)
+            + (where
+               ? node('🔍 WHERE<br><small>' + esc(where) + '</small>', 'dn-filter', 'filas a eliminar')
+               : node('⚠️ TODAS LAS FILAS', 'dn-warn', '¡sin filtro = todo!'))
+            + arrow('#f85149')
+            + node('🗑️ ELIMINAR<br><small>' + rows + ' fila' + (rows!==1?'s':'') + '</small>', 'dn-del', '⚠️ irreversible');
+
+    prose = `<span class="kw">DELETE FROM</span> <strong>elimina filas permanentemente</strong> de <span class="tbl">${tblLabel}</span>.`
+          + (noWhere ? ' <strong class="warn">⚠️ Sin WHERE se eliminan TODAS las filas.</strong>' : '');
+    steps = [
+      `SQL identifica la tabla <strong>${tblLabel}</strong>.`,
+      where
+        ? `<strong>WHERE ${esc(where)}</strong> marca las filas que serán borradas.`
+        : `<strong class="warn">⚠️ No hay WHERE → se eliminan TODAS las filas de la tabla.</strong>`,
+      `Las filas seleccionadas son removidas permanentemente.`,
+      `<strong class="warn">Esta operación NO se puede deshacer.</strong> Se eliminaron ${rows} fila${rows!==1?'s':''}.`,
+    ];
+  } else {
+    return;
+  }
+
+  // Build HTML
+  const stepsHtml = steps.map((s, i) =>
+    `<div class="step">
+       <div class="step-n">${i+1}</div>
+       <div class="step-t">${s}</div>
+     </div>`
+  ).join('');
+
+  document.getElementById('explain-body').innerHTML = `
+    <div class="op-title">
+      <div class="main-label" style="color:${meta.color}">${meta.emoji} ${meta.title}</div>
+      <div class="sub-label">${meta.desc} &nbsp;|&nbsp; Tabla: <strong>${tblLabel}</strong></div>
+    </div>
+    <div class="diagram">${diagram}</div>
+    <div class="explain-prose">${prose}</div>
+    <div class="steps">${stepsHtml}</div>
+  `;
+
+  const badge = document.getElementById('op-badge');
+  badge.textContent = type;
+  badge.className = `badge ${meta.badge} ml`;
+
+  show('p-explain');
+}
+
+// ─────────────────────────────────────────────────
+// RESULTS
+// ─────────────────────────────────────────────────
+function showResults(sql, type, result) {
+  const infoEl  = document.getElementById('results-info');
+  const tableEl = document.getElementById('results-table');
+
+  if (type === 'SELECT' && Array.isArray(result)) {
+    const cols = result.length > 0 ? Object.keys(result[0]).length : 0;
+    infoEl.innerHTML = `<span>📋 <strong>${result.length}</strong> fila${result.length!==1?'s':''} devuelta${result.length!==1?'s':''}</span>`
+                     + (cols ? `<span>📊 <strong>${cols}</strong> columna${cols!==1?'s':''}</span>` : '');
+    tableEl.innerHTML = buildTable(result);
+  } else {
+    const n = typeof result === 'number' ? result : 1;
+    const msgs = {
+      INSERT: `✅ Se insertó correctamente <strong>1 nueva fila</strong>.`,
+      UPDATE: `✅ Se actualizaron <strong>${n} fila${n!==1?'s':''}</strong> correctamente.`,
+      DELETE: `🗑️ Se eliminaron <strong>${n} fila${n!==1?'s':''}</strong> de la tabla.`,
+    };
+    const color = type === 'DELETE' ? '#f85149' : '#3fb950';
+    infoEl.innerHTML = '';
+    tableEl.innerHTML = `<div class="ok-bar" style="color:${color}">${msgs[type] || '✅ Operación completada.'}</div>`;
+  }
+
+  show('p-results');
+}
+
+function buildTable(rows) {
+  if (!rows || rows.length === 0)
+    return '<div class="empty-msg">Sin resultados</div>';
+  const cols = Object.keys(rows[0]);
+  const head = cols.map(c => `<th>${esc(c)}</th>`).join('');
+  const body = rows.map(r =>
+    '<tr>' + cols.map(c => {
+      const v = r[c];
+      return v == null ? '<td><span class="null-v">NULL</span></td>'
+                       : `<td>${esc(String(v))}</td>`;
+    }).join('') + '</tr>'
+  ).join('');
+  return `<table class="dt"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`;
+}
+
+// ─────────────────────────────────────────────────
+// DB STATE VIEWER
+// ─────────────────────────────────────────────────
+function refreshState() {
+  const tabsEl   = document.getElementById('state-tabs');
+  const panesEl  = document.getElementById('state-panes');
+  const tables   = Object.keys(SCHEMA);
+  const active   = tabsEl.querySelector('.tab.active')?.dataset.t || tables[0];
+
+  tabsEl.innerHTML = tables.map(t =>
+    `<div class="tab ${t===active?'active':''}" data-t="${t}" onclick="switchTab('${t}')">
+       ${SCHEMA[t].icon} ${SCHEMA[t].label}
+     </div>`
+  ).join('');
+
+  panesEl.innerHTML = tables.map(t => {
+    let rows = [];
+    try { rows = alasql(`SELECT * FROM ${t}`); } catch(_) {}
+    return `<div class="tab-pane ${t===active?'active':''}" id="tp-${t}">
+      <div class="info-bar">
+        <span>📊 <strong>${rows.length}</strong> filas</span>
+        <span>📋 <strong>${SCHEMA[t].cols.length}</strong> columnas</span>
+      </div>
+      <div class="tbl-wrap">${buildTable(rows)}</div>
+    </div>`;
+  }).join('');
+}
+
+function switchTab(t) {
+  document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab-pane').forEach(el => el.classList.remove('active'));
+  document.querySelector(`.tab[data-t="${t}"]`)?.classList.add('active');
+  document.getElementById(`tp-${t}`)?.classList.add('active');
+}
+
+// ─────────────────────────────────────────────────
+// SCHEMA SIDEBAR
+// ─────────────────────────────────────────────────
+function buildSchema() {
+  document.getElementById('schema').innerHTML = Object.entries(SCHEMA).map(([key, s]) => `
+    <div class="tbl-card">
+      <div class="tbl-head" id="th-${key}" onclick="toggleSchema('${key}')">
+        ${s.icon} ${s.label}
+        <span class="arrow">▶</span>
+      </div>
+      <div class="col-list" id="cl-${key}">
+        ${s.cols.map(c => `
+          <div class="col-row">
+            <span>${c.pk?'🔑 ':c.fk?'🔗 ':''}${c.name}</span>
+            <span class="col-type">${c.type}</span>
+          </div>`).join('')}
+      </div>
+    </div>`
+  ).join('');
+}
+
+function toggleSchema(key) {
+  const cl = document.getElementById('cl-' + key);
+  const th = document.getElementById('th-' + key);
+  cl.classList.toggle('open');
+  th.classList.toggle('open');
+}
+
+// ─────────────────────────────────────────────────
+// EXAMPLES SIDEBAR
+// ─────────────────────────────────────────────────
+function buildExamples() {
+  document.getElementById('examples').innerHTML = EXAMPLES.map((ex, i) => `
+    <button class="ex-btn" onclick="loadEx(${i})">
+      <span class="badge b-${ex.type}">${ex.type}</span>
+      ${ex.label}
+    </button>`
+  ).join('');
+}
+function loadEx(i) {
+  document.getElementById('editor').value = EXAMPLES[i].sql;
+}
+
+// ─────────────────────────────────────────────────
+// HELPERS
+// ─────────────────────────────────────────────────
+function node(label, cls, sub) {
+  return `<div class="d-node">
+    <div class="d-box ${cls}">${label}</div>
+    ${sub ? `<div class="d-label">${sub}</div>` : ''}
+  </div>`;
+}
+function arrow(color) {
+  return `<div class="d-arrow" style="${color?'color:'+color:''}">&rarr;</div>`;
+}
+function esc(str) {
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+function show(id) {
+  const el = document.getElementById(id);
+  el.style.display = '';
+  el.classList.remove('fade'); void el.offsetWidth; el.classList.add('fade');
+}
+function hide(id) { document.getElementById(id).style.display = 'none'; }
+
+// ─────────────────────────────────────────────────
+// RESET & CLEAR
+// ─────────────────────────────────────────────────
+function resetDB() {
+  initDB();
+  refreshState();
+  hide('p-explain'); hide('p-results');
+  document.getElementById('err-display').innerHTML = '';
+  const btn = event.currentTarget;
+  btn.textContent = '✅ BD Reiniciada';
+  btn.style.color = '#3fb950';
+  setTimeout(() => { btn.textContent = '↺ Reiniciar BD'; btn.style.color = ''; }, 2000);
+}
+function clearEditor() {
+  document.getElementById('editor').value = '';
+  hide('p-explain'); hide('p-results');
+  document.getElementById('err-display').innerHTML = '';
+}
+
+// ─────────────────────────────────────────────────
+// KEYBOARD SHORTCUT
+// ─────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+    e.preventDefault();
+    runQuery();
+  }
+});
+
+// ─────────────────────────────────────────────────
+// BOOT
+// ─────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  initDB();
+  buildSchema();
+  buildExamples();
+  refreshState();
+  document.getElementById('editor').value = 'SELECT * FROM empleados;';
+});
+</script>
+</body>
+</html>
