@@ -1,0 +1,873 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Guía SQL — Administración de Empresas</title>
+  <style>
+    :root {
+      --bg:     #f6f8fa;
+      --bg2:    #ffffff;
+      --bg3:    #eaeef2;
+      --border: #d0d7de;
+      --text:   #24292f;
+      --dim:    #57606a;
+      --accent: #0969da;
+      --select: #0969da;
+      --insert: #1a7f37;
+      --update: #9a6700;
+      --delete: #b91c1c;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; font-size: 16px; line-height: 1.6; }
+
+    /* ── HEADER ── */
+    header { background: var(--bg2); border-bottom: 1px solid var(--border); padding: 14px 24px; display: flex; align-items: center; gap: 12px; flex-shrink: 0; position: sticky; top: 0; z-index: 100; }
+    header h1 { font-size: 1.2rem; font-weight: 700; color: var(--accent); }
+    .back-btn { background: transparent; border: 1px solid var(--border); color: var(--dim); padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: .85rem; text-decoration: none; display: inline-flex; align-items: center; gap: 5px; transition: all .15s; }
+    .back-btn:hover { color: var(--text); border-color: var(--text); }
+    .theme-btn { margin-left: auto; background: transparent; border: 1px solid var(--border); color: var(--dim); padding: 5px 10px; border-radius: 6px; cursor: pointer; font-size: 1.1rem; line-height: 1; transition: all .15s; }
+    .theme-btn:hover { color: var(--text); border-color: var(--text); }
+
+    /* ── LAYOUT ── */
+    .layout { display: grid; grid-template-columns: 250px 1fr; flex: 1; max-width: 1200px; margin: 0 auto; width: 100%; padding: 0 16px; gap: 0; }
+
+    /* ── SIDEBAR NAV ── */
+    nav.sidebar { padding: 28px 12px 40px 4px; position: sticky; top: 60px; height: calc(100vh - 60px); overflow-y: auto; }
+    .nav-section { font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--dim); padding: 18px 8px 6px; }
+    .nav-section:first-child { padding-top: 0; }
+    .nav-link { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 6px; font-size: .88rem; color: var(--dim); text-decoration: none; transition: all .12s; border-left: 3px solid transparent; }
+    .nav-link:hover { color: var(--text); background: var(--bg3); }
+    .nav-link.active { color: var(--accent); background: rgba(9,105,218,.07); border-left-color: var(--accent); font-weight: 600; }
+    .nav-link .nav-badge { font-size: .62rem; padding: 1px 5px; border-radius: 3px; font-weight: 700; flex-shrink: 0; }
+    .nb-select { background: rgba(9,105,218,.12);  color: #0550ae; }
+    .nb-insert { background: rgba(26,127,55,.12);  color: #116329; }
+    .nb-update { background: rgba(154,103,0,.15);  color: #7d4e00; }
+    .nb-delete { background: rgba(185,28,28,.12);  color: #82071e; }
+
+    /* ── CONTENT ── */
+    main.content { padding: 36px 0 80px 40px; border-left: 1px solid var(--border); min-width: 0; }
+
+    /* ── SECTIONS ── */
+    .doc-section { margin-bottom: 60px; scroll-margin-top: 80px; }
+    .doc-section:last-child { margin-bottom: 0; }
+
+    .section-header { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; padding-bottom: 12px; border-bottom: 2px solid var(--border); }
+    .section-icon { font-size: 1.8rem; }
+    .section-title { font-size: 1.5rem; font-weight: 700; }
+    .section-badge { font-size: .72rem; padding: 3px 10px; border-radius: 20px; font-weight: 700; letter-spacing: .04em; }
+
+    .section-select .section-badge { background: rgba(9,105,218,.12);  color: #0550ae; border: 1px solid rgba(9,105,218,.3); }
+    .section-insert .section-badge { background: rgba(26,127,55,.12);  color: #116329; border: 1px solid rgba(26,127,55,.3); }
+    .section-update .section-badge { background: rgba(154,103,0,.15);  color: #7d4e00; border: 1px solid rgba(154,103,0,.3); }
+    .section-delete .section-badge { background: rgba(185,28,28,.12);  color: #82071e; border: 1px solid rgba(185,28,28,.3); }
+
+    /* ── PROSE ── */
+    .prose { font-size: 1rem; line-height: 1.8; color: var(--text); }
+    .prose p { margin-bottom: 14px; }
+    .prose p:last-child { margin-bottom: 0; }
+    .prose strong { font-weight: 700; }
+    .prose em { color: var(--dim); font-style: italic; }
+
+    /* ── INFO CARDS ── */
+    .card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin: 20px 0; }
+    .card { border-radius: 10px; padding: 18px 20px; border: 2px solid; }
+    .card-title { font-size: .8rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 6px; }
+    .card-body { font-size: .95rem; line-height: 1.6; }
+    .card-select { background: rgba(9,105,218,.07);  border-color: rgba(9,105,218,.3); }
+    .card-select .card-title { color: #0550ae; }
+    .card-insert { background: rgba(26,127,55,.07);  border-color: rgba(26,127,55,.3); }
+    .card-insert .card-title { color: #116329; }
+    .card-update { background: rgba(154,103,0,.08);  border-color: rgba(154,103,0,.3); }
+    .card-update .card-title { color: #7d4e00; }
+    .card-delete { background: rgba(185,28,28,.07);  border-color: rgba(185,28,28,.3); }
+    .card-delete .card-title { color: #82071e; }
+    .card-neutral { background: var(--bg3); border-color: var(--border); }
+    .card-neutral .card-title { color: var(--dim); }
+
+    /* ── CODE BLOCKS ── */
+    .code-block { background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; margin: 16px 0; }
+    .code-label { padding: 6px 14px; font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; border-bottom: 1px solid var(--border); }
+    .code-label.lb-select { background: rgba(9,105,218,.08);  color: #0550ae; }
+    .code-label.lb-insert { background: rgba(26,127,55,.08);  color: #116329; }
+    .code-label.lb-update { background: rgba(154,103,0,.1);   color: #7d4e00; }
+    .code-label.lb-delete { background: rgba(185,28,28,.08);  color: #82071e; }
+    .code-label.lb-sintaxis { background: var(--bg3); color: var(--dim); }
+    pre { padding: 18px 20px; font-family: 'Consolas', 'Courier New', monospace; font-size: .95rem; line-height: 1.75; overflow-x: auto; color: var(--text); }
+    .kw  { color: #cf222e; font-weight: 700; }
+    .tbl { color: #0550ae; font-weight: 600; }
+    .val { color: #0a3069; }
+    .cmt { color: var(--dim); font-style: italic; }
+    .col { color: #6639ba; }
+
+    /* ── TIPS & WARNINGS ── */
+    .tip, .warning, .info { border-radius: 8px; padding: 14px 18px; margin: 16px 0; font-size: .95rem; line-height: 1.7; display: flex; gap: 12px; }
+    .tip     { background: rgba(9,105,218,.07); border: 1px solid rgba(9,105,218,.25); }
+    .warning { background: rgba(185,28,28,.07); border: 1px solid rgba(185,28,28,.25); }
+    .info    { background: rgba(26,127,55,.07);  border: 1px solid rgba(26,127,55,.25); }
+    .tip-icon { font-size: 1.2rem; flex-shrink: 0; margin-top: 1px; }
+    .tip-text { color: var(--text); }
+    .tip-text strong { color: #1a2433; }
+
+    /* ── OPERATORS TABLE ── */
+    .op-table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: .95rem; }
+    .op-table th { background: var(--bg3); padding: 10px 14px; text-align: left; font-weight: 700; color: var(--dim); border-bottom: 2px solid var(--border); font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; }
+    .op-table td { padding: 9px 14px; border-bottom: 1px solid var(--border); }
+    .op-table tr:last-child td { border-bottom: none; }
+    .op-table tr:hover td { background: var(--bg3); }
+    .op-table code { background: var(--bg3); border: 1px solid var(--border); border-radius: 4px; padding: 1px 6px; font-family: 'Consolas', monospace; font-size: .88rem; color: #cf222e; font-weight: 600; }
+
+    /* ── CRUD OVERVIEW TABLE ── */
+    .crud-table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: .95rem; }
+    .crud-table th { padding: 11px 16px; text-align: left; font-weight: 700; font-size: .82rem; text-transform: uppercase; letter-spacing: .05em; color: var(--dim); background: var(--bg3); border-bottom: 2px solid var(--border); }
+    .crud-table td { padding: 12px 16px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    .crud-table tr:last-child td { border-bottom: none; }
+    .crud-letter { font-size: 1.6rem; font-weight: 900; width: 50px; }
+    .crud-letter.c { color: #116329; }
+    .crud-letter.r { color: #0550ae; }
+    .crud-letter.u { color: #7d4e00; }
+    .crud-letter.d { color: #82071e; }
+    .crud-op { font-weight: 700; font-size: 1rem; }
+    .crud-sql code { background: var(--bg3); border: 1px solid var(--border); border-radius: 5px; padding: 3px 10px; font-family: 'Consolas', monospace; font-size: .9rem; font-weight: 700; }
+    .crud-sql code.c { color: #116329; }
+    .crud-sql code.r { color: #0550ae; }
+    .crud-sql code.u { color: #7d4e00; }
+    .crud-sql code.d { color: #82071e; }
+
+    /* ── TABLE VISUAL ── */
+    .mini-table { border-collapse: collapse; font-size: .88rem; margin: 16px 0; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); }
+    .mini-table th { background: var(--bg3); padding: 8px 16px; font-weight: 700; color: var(--dim); border-bottom: 2px solid var(--border); text-align: left; }
+    .mini-table td { padding: 7px 16px; border-bottom: 1px solid var(--border); }
+    .mini-table tr:last-child td { border-bottom: none; }
+    .mini-table tr:hover td { background: var(--bg3); }
+    .row-label { background: rgba(9,105,218,.06) !important; }
+    .col-label { background: rgba(26,127,55,.06) !important; color: #116329; font-weight: 600; }
+
+    /* ── JOIN VISUAL ── */
+    .join-visual { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 20px 0; }
+    .join-table-box { background: var(--bg3); border: 2px solid var(--border); border-radius: 10px; padding: 14px 18px; min-width: 140px; }
+    .join-table-box h4 { font-size: .82rem; font-weight: 700; color: var(--dim); margin-bottom: 8px; text-transform: uppercase; }
+    .join-table-box .jrow { font-size: .88rem; padding: 3px 0; border-bottom: 1px solid var(--border); }
+    .join-table-box .jrow:last-child { border-bottom: none; }
+    .join-table-box .jrow .jkey { color: #0550ae; font-weight: 700; font-family: monospace; }
+    .join-arrow { font-size: 2rem; color: var(--dim); }
+    .join-result { background: rgba(26,127,55,.07); border: 2px solid rgba(26,127,55,.3); border-radius: 10px; padding: 14px 18px; }
+    .join-result h4 { color: #116329; font-size: .82rem; font-weight: 700; margin-bottom: 8px; text-transform: uppercase; }
+
+    /* ── CHECKLIST ── */
+    .checklist { list-style: none; display: flex; flex-direction: column; gap: 8px; margin: 14px 0; }
+    .checklist li { display: flex; gap: 10px; align-items: flex-start; font-size: .97rem; line-height: 1.6; }
+    .checklist li::before { content: '✓'; color: #116329; font-weight: 700; font-size: 1rem; flex-shrink: 0; margin-top: 1px; }
+    .checklist li.warn-item::before { content: '⚠️'; }
+
+    /* ── DARK MODE ── */
+    body.dark-mode {
+      --bg:     #0d1117;
+      --bg2:    #161b22;
+      --bg3:    #21262d;
+      --border: #30363d;
+      --text:   #c9d1d9;
+      --dim:    #8b949e;
+      --accent: #58a6ff;
+    }
+    body.dark-mode .kw  { color: #ff7b72; }
+    body.dark-mode .tbl { color: #79c0ff; }
+    body.dark-mode .val { color: #a5d6ff; }
+    body.dark-mode .col { color: #d2a8ff; }
+    body.dark-mode .section-select .section-badge { color: #58a6ff; background: rgba(88,166,255,.12); border-color: rgba(88,166,255,.3); }
+    body.dark-mode .section-insert .section-badge { color: #3fb950; background: rgba(63,185,80,.12); border-color: rgba(63,185,80,.3); }
+    body.dark-mode .section-update .section-badge { color: #e3b341; background: rgba(227,179,65,.12); border-color: rgba(227,179,65,.3); }
+    body.dark-mode .section-delete .section-badge { color: #f85149; background: rgba(248,81,73,.12); border-color: rgba(248,81,73,.3); }
+    body.dark-mode .card-select { background: rgba(88,166,255,.08); border-color: rgba(88,166,255,.25); }
+    body.dark-mode .card-select .card-title { color: #79c0ff; }
+    body.dark-mode .card-insert { background: rgba(63,185,80,.08);  border-color: rgba(63,185,80,.25); }
+    body.dark-mode .card-insert .card-title { color: #3fb950; }
+    body.dark-mode .card-update { background: rgba(227,179,65,.08); border-color: rgba(227,179,65,.25); }
+    body.dark-mode .card-update .card-title { color: #e3b341; }
+    body.dark-mode .card-delete { background: rgba(248,81,73,.08);  border-color: rgba(248,81,73,.25); }
+    body.dark-mode .card-delete .card-title { color: #f85149; }
+    body.dark-mode .nb-select { color: #58a6ff; background: rgba(88,166,255,.12); }
+    body.dark-mode .nb-insert { color: #3fb950; background: rgba(63,185,80,.12); }
+    body.dark-mode .nb-update { color: #e3b341; background: rgba(227,179,65,.12); }
+    body.dark-mode .nb-delete { color: #f85149; background: rgba(248,81,73,.12); }
+    body.dark-mode .crud-letter.c { color: #3fb950; }
+    body.dark-mode .crud-letter.r { color: #58a6ff; }
+    body.dark-mode .crud-letter.u { color: #e3b341; }
+    body.dark-mode .crud-letter.d { color: #f85149; }
+    body.dark-mode .crud-sql code.c { color: #3fb950; }
+    body.dark-mode .crud-sql code.r { color: #58a6ff; }
+    body.dark-mode .crud-sql code.u { color: #e3b341; }
+    body.dark-mode .crud-sql code.d { color: #f85149; }
+    body.dark-mode .op-table code { color: #ff7b72; }
+    body.dark-mode .tip     { background: rgba(88,166,255,.07);  border-color: rgba(88,166,255,.25); }
+    body.dark-mode .warning { background: rgba(248,81,73,.07);   border-color: rgba(248,81,73,.25); }
+    body.dark-mode .info    { background: rgba(63,185,80,.07);   border-color: rgba(63,185,80,.25); }
+    body.dark-mode .tip-text strong { color: #e6edf3; }
+    body.dark-mode .join-result { background: rgba(63,185,80,.08); border-color: rgba(63,185,80,.25); }
+    body.dark-mode .join-result h4 { color: #3fb950; }
+    body.dark-mode .checklist li::before { color: #3fb950; }
+
+    @media (max-width: 780px) { .layout { grid-template-columns: 1fr; } nav.sidebar { display: none; } main.content { padding: 24px 0; border: none; } }
+  </style>
+</head>
+<body>
+
+<header>
+  <span style="font-size:1.3rem">📚</span>
+  <h1>Guía SQL</h1>
+  <a href="index.html" class="back-btn">← Volver al Trainer</a>
+  <button class="theme-btn" id="theme-toggle" onclick="toggleTheme()" title="Cambiar tema">🌙</button>
+</header>
+
+<div class="layout">
+
+  <!-- ── SIDEBAR NAVIGATION ── -->
+  <nav class="sidebar" id="sidebar">
+    <div class="nav-section">Fundamentos</div>
+    <a class="nav-link" href="#que-es-sql">🧠 ¿Qué es SQL?</a>
+    <a class="nav-link" href="#base-de-datos">🗄️ La base de datos</a>
+    <a class="nav-link" href="#crud">⚡ Las 4 operaciones CRUD</a>
+
+    <div class="nav-section">Operaciones</div>
+    <a class="nav-link" href="#select">
+      <span class="nav-badge nb-select">SELECT</span> Consultar datos
+    </a>
+    <a class="nav-link" href="#insert">
+      <span class="nav-badge nb-insert">INSERT</span> Insertar datos
+    </a>
+    <a class="nav-link" href="#update">
+      <span class="nav-badge nb-update">UPDATE</span> Actualizar datos
+    </a>
+    <a class="nav-link" href="#delete">
+      <span class="nav-badge nb-delete">DELETE</span> Eliminar datos
+    </a>
+
+    <div class="nav-section">Cláusulas</div>
+    <a class="nav-link" href="#where">🔍 WHERE — Filtrar</a>
+    <a class="nav-link" href="#orderby">↕️ ORDER BY — Ordenar</a>
+    <a class="nav-link" href="#join">🔗 JOIN — Unir tablas</a>
+    <a class="nav-link" href="#funciones">∑ Funciones de cálculo</a>
+
+    <div class="nav-section">Referencia</div>
+    <a class="nav-link" href="#buenas-practicas">✅ Buenas prácticas</a>
+  </nav>
+
+  <!-- ── MAIN CONTENT ── -->
+  <main class="content">
+
+    <!-- ══════════════════════════════════════ -->
+    <!-- ¿QUÉ ES SQL? -->
+    <!-- ══════════════════════════════════════ -->
+    <section class="doc-section" id="que-es-sql">
+      <div class="section-header">
+        <span class="section-icon">🧠</span>
+        <div>
+          <div class="section-title">¿Qué es SQL?</div>
+        </div>
+      </div>
+
+      <div class="prose">
+        <p><strong>SQL</strong> (Structured Query Language — Lenguaje Estructurado de Consulta) es el idioma estándar que usamos para comunicarnos con bases de datos. Con SQL podemos pedir, agregar, modificar y eliminar información.</p>
+        <p>Piénsalo así: la base de datos es como una bodega enorme llena de información, y SQL es el idioma con el que le dices al encargado qué información necesitas o qué cambios hacer.</p>
+      </div>
+
+      <div class="card-grid" style="margin-top:20px">
+        <div class="card card-neutral">
+          <div class="card-title">💡 Se pronuncia</div>
+          <div class="card-body">"Es-Cu-El" o "Sequel". Ambas formas son correctas.</div>
+        </div>
+        <div class="card card-neutral">
+          <div class="card-title">🌐 Es universal</div>
+          <div class="card-body">Funciona en MySQL, PostgreSQL, SQL Server, Oracle, SQLite y muchos más.</div>
+        </div>
+        <div class="card card-neutral">
+          <div class="card-title">📅 Lleva décadas</div>
+          <div class="card-body">Se creó en los años 70 y sigue siendo el estándar mundial para manejo de datos.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════ -->
+    <!-- BASE DE DATOS -->
+    <!-- ══════════════════════════════════════ -->
+    <section class="doc-section" id="base-de-datos">
+      <div class="section-header">
+        <span class="section-icon">🗄️</span>
+        <div>
+          <div class="section-title">La base de datos</div>
+        </div>
+      </div>
+
+      <div class="prose">
+        <p>Una base de datos organiza la información en <strong>tablas</strong>, muy parecidas a hojas de cálculo. Cada tabla representa un tema o entidad del mundo real.</p>
+        <p>Nuestra base de datos de práctica tiene 4 tablas relacionadas entre sí:</p>
+      </div>
+
+      <div class="card-grid">
+        <div class="card card-neutral">
+          <div class="card-title">🏢 departamentos</div>
+          <div class="card-body">Los departamentos de la empresa: RR.HH., Tecnología, Finanzas…</div>
+        </div>
+        <div class="card card-neutral">
+          <div class="card-title">👤 empleados</div>
+          <div class="card-body">Los empleados: nombre, cargo, salario, a qué departamento pertenecen…</div>
+        </div>
+        <div class="card card-neutral">
+          <div class="card-title">📁 proyectos</div>
+          <div class="card-body">Los proyectos activos, su presupuesto y estado actual.</div>
+        </div>
+        <div class="card card-neutral">
+          <div class="card-title">📋 asignaciones</div>
+          <div class="card-body">Qué empleado trabaja en qué proyecto y con qué rol.</div>
+        </div>
+      </div>
+
+      <div class="prose" style="margin-top:20px">
+        <p>Cada tabla tiene <strong>columnas</strong> (los tipos de información) y <strong>filas</strong> (los registros individuales). Por ejemplo, la tabla <strong>empleados</strong>:</p>
+      </div>
+
+      <table class="mini-table">
+        <thead>
+          <tr>
+            <th class="col-label">id_empleado</th>
+            <th class="col-label">nombre</th>
+            <th class="col-label">cargo</th>
+            <th class="col-label">salario</th>
+            <th class="col-label">id_departamento</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="row-label">
+            <td>1</td><td>Ana</td><td>Gerente RRHH</td><td>75,000</td><td>1</td>
+          </tr>
+          <tr>
+            <td>2</td><td>Carlos</td><td>Desarrollador Senior</td><td>85,000</td><td>2</td>
+          </tr>
+          <tr>
+            <td>3</td><td>María</td><td>Analista Financiero</td><td>68,000</td><td>3</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="tip">
+        <span class="tip-icon">💡</span>
+        <span class="tip-text">La columna <strong>id_departamento</strong> en empleados es una <strong>clave foránea (FK)</strong>: conecta cada empleado con su departamento en la tabla <em>departamentos</em>. Así es como las tablas se relacionan entre sí.</span>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════ -->
+    <!-- CRUD OVERVIEW -->
+    <!-- ══════════════════════════════════════ -->
+    <section class="doc-section" id="crud">
+      <div class="section-header">
+        <span class="section-icon">⚡</span>
+        <div>
+          <div class="section-title">Las 4 operaciones CRUD</div>
+        </div>
+      </div>
+
+      <div class="prose">
+        <p><strong>CRUD</strong> es el acrónimo de las 4 operaciones fundamentales que podemos hacer sobre cualquier base de datos. Todo sistema de información del mundo usa estas cuatro acciones.</p>
+      </div>
+
+      <table class="crud-table">
+        <thead>
+          <tr><th>Letra</th><th>Operación</th><th>Comando SQL</th><th>¿Qué hace?</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="crud-letter c">C</span></td>
+            <td><span class="crud-op">Create — Crear</span></td>
+            <td class="crud-sql"><code class="c">INSERT</code></td>
+            <td>Agrega filas nuevas a una tabla.</td>
+          </tr>
+          <tr>
+            <td><span class="crud-letter r">R</span></td>
+            <td><span class="crud-op">Read — Leer</span></td>
+            <td class="crud-sql"><code class="r">SELECT</code></td>
+            <td>Consulta y muestra datos. No modifica nada.</td>
+          </tr>
+          <tr>
+            <td><span class="crud-letter u">U</span></td>
+            <td><span class="crud-op">Update — Actualizar</span></td>
+            <td class="crud-sql"><code class="u">UPDATE</code></td>
+            <td>Modifica valores en filas ya existentes.</td>
+          </tr>
+          <tr>
+            <td><span class="crud-letter d">D</span></td>
+            <td><span class="crud-op">Delete — Eliminar</span></td>
+            <td class="crud-sql"><code class="d">DELETE</code></td>
+            <td>Borra filas permanentemente. ¡Sin deshacer!</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- ══════════════════════════════════════ -->
+    <!-- SELECT -->
+    <!-- ══════════════════════════════════════ -->
+    <section class="doc-section section-select" id="select">
+      <div class="section-header">
+        <span class="section-icon">🔍</span>
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <div class="section-title">SELECT</div>
+          <span class="section-badge">CONSULTAR DATOS</span>
+        </div>
+      </div>
+
+      <div class="prose">
+        <p>SELECT es la operación más usada. Sirve para <strong>leer y mostrar datos</strong> de la base de datos. <em>No modifica nada</em> — es completamente segura.</p>
+      </div>
+
+      <div class="code-block">
+        <div class="code-label lb-sintaxis">Sintaxis básica</div>
+        <pre><span class="kw">SELECT</span> <span class="col">columna1</span>, <span class="col">columna2</span>
+<span class="kw">FROM</span> <span class="tbl">nombre_tabla</span>
+<span class="kw">WHERE</span> condicion         <span class="cmt">-- opcional</span>
+<span class="kw">ORDER BY</span> <span class="col">columna</span>;      <span class="cmt">-- opcional</span></pre>
+      </div>
+
+      <div class="code-block">
+        <div class="code-label lb-select">Ejemplo 1 — Traer todas las columnas</div>
+        <pre><span class="kw">SELECT</span> *
+<span class="kw">FROM</span> <span class="tbl">empleados</span>;</pre>
+      </div>
+
+      <div class="tip">
+        <span class="tip-icon">💡</span>
+        <span class="tip-text">El símbolo <strong>*</strong> (asterisco) significa "todas las columnas". Es útil para explorar, pero en sistemas reales es mejor pedir solo las columnas que necesitas.</span>
+      </div>
+
+      <div class="code-block">
+        <div class="code-label lb-select">Ejemplo 2 — Columnas específicas</div>
+        <pre><span class="kw">SELECT</span> <span class="col">nombre</span>, <span class="col">apellido</span>, <span class="col">cargo</span>, <span class="col">salario</span>
+<span class="kw">FROM</span> <span class="tbl">empleados</span>;</pre>
+      </div>
+
+      <div class="code-block">
+        <div class="code-label lb-select">Ejemplo 3 — Con filtro y ordenamiento</div>
+        <pre><span class="kw">SELECT</span> <span class="col">nombre</span>, <span class="col">salario</span>
+<span class="kw">FROM</span> <span class="tbl">empleados</span>
+<span class="kw">WHERE</span> <span class="col">salario</span> > <span class="val">70000</span>
+<span class="kw">ORDER BY</span> <span class="col">salario</span> <span class="kw">DESC</span>;</pre>
+      </div>
+
+      <div class="info">
+        <span class="tip-icon">✅</span>
+        <span class="tip-text"><strong>SELECT es seguro:</strong> no importa cuántas veces lo ejecutes, los datos en la base de datos no cambian. Úsalo libremente para explorar y verificar información.</span>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════ -->
+    <!-- INSERT -->
+    <!-- ══════════════════════════════════════ -->
+    <section class="doc-section section-insert" id="insert">
+      <div class="section-header">
+        <span class="section-icon">➕</span>
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <div class="section-title">INSERT</div>
+          <span class="section-badge">INSERTAR DATOS</span>
+        </div>
+      </div>
+
+      <div class="prose">
+        <p>INSERT agrega <strong>filas nuevas</strong> a una tabla. Debes indicar qué tabla, qué columnas y qué valores vas a insertar.</p>
+      </div>
+
+      <div class="code-block">
+        <div class="code-label lb-sintaxis">Sintaxis — especificando columnas (recomendado)</div>
+        <pre><span class="kw">INSERT INTO</span> <span class="tbl">nombre_tabla</span> (<span class="col">col1</span>, <span class="col">col2</span>, <span class="col">col3</span>)
+<span class="kw">VALUES</span> (<span class="val">valor1</span>, <span class="val">valor2</span>, <span class="val">valor3</span>);</pre>
+      </div>
+
+      <div class="code-block">
+        <div class="code-label lb-sintaxis">Sintaxis — sin especificar columnas</div>
+        <pre><span class="kw">INSERT INTO</span> <span class="tbl">nombre_tabla</span>
+<span class="kw">VALUES</span> (<span class="val">valor1</span>, <span class="val">valor2</span>, <span class="val">valor3</span>); <span class="cmt">-- mismo orden que la tabla</span></pre>
+      </div>
+
+      <div class="code-block">
+        <div class="code-label lb-insert">Ejemplo — Insertar un nuevo empleado</div>
+        <pre><span class="kw">INSERT INTO</span> <span class="tbl">empleados</span>
+<span class="kw">VALUES</span> (
+  <span class="val">9</span>, <span class="val">'Sofía'</span>, <span class="val">'Morales'</span>, <span class="val">'s.morales@corp.com'</span>,
+  <span class="val">'Analista de Datos'</span>, <span class="val">65000</span>, <span class="val">2</span>, <span class="val">'2025-01-10'</span>
+);</pre>
+      </div>
+
+      <div class="tip" style="margin-top:0">
+        <span class="tip-icon">💡</span>
+        <span class="tip-text">
+          <strong>Reglas de los valores:</strong><br>
+          • Los <strong>textos</strong> van entre comillas simples: <code style="font-family:monospace">'Ana'</code><br>
+          • Los <strong>números</strong> NO llevan comillas: <code style="font-family:monospace">75000</code><br>
+          • Las <strong>fechas</strong> van en formato <code style="font-family:monospace">'AAAA-MM-DD'</code>: <code style="font-family:monospace">'2025-01-15'</code>
+        </span>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════ -->
+    <!-- UPDATE -->
+    <!-- ══════════════════════════════════════ -->
+    <section class="doc-section section-update" id="update">
+      <div class="section-header">
+        <span class="section-icon">✏️</span>
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <div class="section-title">UPDATE</div>
+          <span class="section-badge">ACTUALIZAR DATOS</span>
+        </div>
+      </div>
+
+      <div class="prose">
+        <p>UPDATE modifica valores en <strong>filas que ya existen</strong>. Siempre se usa junto con SET (qué cambiar) y casi siempre con WHERE (a qué filas).</p>
+      </div>
+
+      <div class="code-block">
+        <div class="code-label lb-sintaxis">Sintaxis</div>
+        <pre><span class="kw">UPDATE</span> <span class="tbl">nombre_tabla</span>
+<span class="kw">SET</span> <span class="col">columna1</span> = <span class="val">nuevo_valor</span>,
+    <span class="col">columna2</span> = <span class="val">otro_valor</span>   <span class="cmt">-- puedes cambiar varias a la vez</span>
+<span class="kw">WHERE</span> condicion;             <span class="cmt">-- ¡SIEMPRE usar WHERE!</span></pre>
+      </div>
+
+      <div class="code-block">
+        <div class="code-label lb-update">Ejemplo 1 — Actualizar el salario de un empleado</div>
+        <pre><span class="kw">UPDATE</span> <span class="tbl">empleados</span>
+<span class="kw">SET</span> <span class="col">salario</span> = <span class="val">72000</span>
+<span class="kw">WHERE</span> <span class="col">id_empleado</span> = <span class="val">3</span>;</pre>
+      </div>
+
+      <div class="code-block">
+        <div class="code-label lb-update">Ejemplo 2 — Aumento del 10% a todo un departamento</div>
+        <pre><span class="kw">UPDATE</span> <span class="tbl">empleados</span>
+<span class="kw">SET</span> <span class="col">salario</span> = <span class="col">salario</span> * <span class="val">1.10</span>
+<span class="kw">WHERE</span> <span class="col">id_departamento</span> = <span class="val">2</span>;</pre>
+      </div>
+
+      <div class="warning">
+        <span class="tip-icon">⚠️</span>
+        <span class="tip-text"><strong>¡Cuidado con UPDATE sin WHERE!</strong><br>Si escribes <code style="font-family:monospace">UPDATE empleados SET salario = 0</code> sin WHERE, se actualizarán <em>todos</em> los empleados de la tabla. Siempre verifica tu WHERE antes de ejecutar.</span>
+      </div>
+
+      <div class="tip">
+        <span class="tip-icon">💡</span>
+        <span class="tip-text"><strong>Truco:</strong> antes de hacer un UPDATE, ejecuta primero un SELECT con el mismo WHERE para verificar qué filas van a cambiar. Cuando estés seguro, convierte el SELECT en UPDATE.</span>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════ -->
+    <!-- DELETE -->
+    <!-- ══════════════════════════════════════ -->
+    <section class="doc-section section-delete" id="delete">
+      <div class="section-header">
+        <span class="section-icon">🗑️</span>
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <div class="section-title">DELETE</div>
+          <span class="section-badge">ELIMINAR DATOS</span>
+        </div>
+      </div>
+
+      <div class="prose">
+        <p>DELETE borra filas de una tabla de forma <strong>permanente e irreversible</strong>. Es la operación que hay que usar con más cuidado.</p>
+      </div>
+
+      <div class="code-block">
+        <div class="code-label lb-sintaxis">Sintaxis</div>
+        <pre><span class="kw">DELETE FROM</span> <span class="tbl">nombre_tabla</span>
+<span class="kw">WHERE</span> condicion; <span class="cmt">-- ¡SIEMPRE usar WHERE!</span></pre>
+      </div>
+
+      <div class="code-block">
+        <div class="code-label lb-delete">Ejemplo 1 — Eliminar un empleado por ID</div>
+        <pre><span class="kw">DELETE FROM</span> <span class="tbl">empleados</span>
+<span class="kw">WHERE</span> <span class="col">id_empleado</span> = <span class="val">8</span>;</pre>
+      </div>
+
+      <div class="code-block">
+        <div class="code-label lb-delete">Ejemplo 2 — Eliminar proyectos completados</div>
+        <pre><span class="kw">DELETE FROM</span> <span class="tbl">proyectos</span>
+<span class="kw">WHERE</span> <span class="col">estado</span> = <span class="val">'Completado'</span>;</pre>
+      </div>
+
+      <div class="warning">
+        <span class="tip-icon">⚠️</span>
+        <span class="tip-text"><strong>DELETE sin WHERE elimina TODO.</strong> <code style="font-family:monospace">DELETE FROM empleados</code> borra cada fila de la tabla. No hay botón de deshacer. Siempre usa WHERE.</span>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════ -->
+    <!-- WHERE -->
+    <!-- ══════════════════════════════════════ -->
+    <section class="doc-section" id="where">
+      <div class="section-header">
+        <span class="section-icon">🔍</span>
+        <div>
+          <div class="section-title">WHERE — Filtrar filas</div>
+        </div>
+      </div>
+
+      <div class="prose">
+        <p>WHERE es la cláusula que <strong>filtra</strong> qué filas se ven, modifican o eliminan. La base de datos revisa cada fila y solo pasan las que cumplen la condición.</p>
+      </div>
+
+      <table class="op-table">
+        <thead><tr><th>Operador</th><th>Significado</th><th>Ejemplo</th></tr></thead>
+        <tbody>
+          <tr><td><code>=</code></td><td>Igual a</td><td><code>WHERE nombre = 'Ana'</code></td></tr>
+          <tr><td><code>&lt;&gt;</code> o <code>!=</code></td><td>Diferente de</td><td><code>WHERE estado != 'Completado'</code></td></tr>
+          <tr><td><code>&gt;</code></td><td>Mayor que</td><td><code>WHERE salario > 70000</code></td></tr>
+          <tr><td><code>&lt;</code></td><td>Menor que</td><td><code>WHERE salario < 50000</code></td></tr>
+          <tr><td><code>&gt;=</code></td><td>Mayor o igual</td><td><code>WHERE salario >= 60000</code></td></tr>
+          <tr><td><code>&lt;=</code></td><td>Menor o igual</td><td><code>WHERE horas_asignadas <= 100</code></td></tr>
+          <tr><td><code>LIKE</code></td><td>Coincide con patrón (<code>%</code> = cualquier cosa)</td><td><code>WHERE email LIKE '%@corp.com'</code></td></tr>
+          <tr><td><code>IN</code></td><td>Está en la lista</td><td><code>WHERE id_departamento IN (1, 2, 3)</code></td></tr>
+          <tr><td><code>BETWEEN</code></td><td>Entre dos valores</td><td><code>WHERE salario BETWEEN 60000 AND 80000</code></td></tr>
+          <tr><td><code>IS NULL</code></td><td>El campo está vacío</td><td><code>WHERE fecha_fin IS NULL</code></td></tr>
+        </tbody>
+      </table>
+
+      <div class="prose" style="margin-top:20px"><p>Para combinar varias condiciones usamos <strong>AND</strong> (y) y <strong>OR</strong> (o):</p></div>
+
+      <div class="code-block">
+        <div class="code-label lb-select">AND — se deben cumplir TODAS las condiciones</div>
+        <pre><span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">empleados</span>
+<span class="kw">WHERE</span> <span class="col">salario</span> > <span class="val">60000</span>
+  <span class="kw">AND</span> <span class="col">id_departamento</span> = <span class="val">2</span>;</pre>
+      </div>
+
+      <div class="code-block">
+        <div class="code-label lb-select">OR — basta con que se cumpla UNA condición</div>
+        <pre><span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">empleados</span>
+<span class="kw">WHERE</span> <span class="col">nombre</span> = <span class="val">'Ana'</span>
+   <span class="kw">OR</span> <span class="col">nombre</span> = <span class="val">'Carlos'</span>;</pre>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════ -->
+    <!-- ORDER BY -->
+    <!-- ══════════════════════════════════════ -->
+    <section class="doc-section" id="orderby">
+      <div class="section-header">
+        <span class="section-icon">↕️</span>
+        <div>
+          <div class="section-title">ORDER BY — Ordenar resultados</div>
+        </div>
+      </div>
+
+      <div class="prose">
+        <p>ORDER BY indica en qué orden deben aparecer las filas en el resultado. Sin ORDER BY el orden es impredecible.</p>
+      </div>
+
+      <div class="card-grid">
+        <div class="card card-neutral">
+          <div class="card-title">↑ ASC (por defecto)</div>
+          <div class="card-body">Ordena de menor a mayor: A→Z, 1→100, fechas más antiguas primero.</div>
+        </div>
+        <div class="card card-neutral">
+          <div class="card-title">↓ DESC</div>
+          <div class="card-body">Ordena de mayor a menor: Z→A, 100→1, fechas más recientes primero.</div>
+        </div>
+      </div>
+
+      <div class="code-block">
+        <div class="code-label lb-select">Ejemplo — Empleados ordenados por salario (mayor primero)</div>
+        <pre><span class="kw">SELECT</span> <span class="col">nombre</span>, <span class="col">apellido</span>, <span class="col">salario</span>
+<span class="kw">FROM</span> <span class="tbl">empleados</span>
+<span class="kw">ORDER BY</span> <span class="col">salario</span> <span class="kw">DESC</span>;</pre>
+      </div>
+
+      <div class="code-block">
+        <div class="code-label lb-select">Ejemplo — Ordenar por varias columnas</div>
+        <pre><span class="kw">SELECT</span> <span class="col">apellido</span>, <span class="col">nombre</span>
+<span class="kw">FROM</span> <span class="tbl">empleados</span>
+<span class="kw">ORDER BY</span> <span class="col">apellido</span> <span class="kw">ASC</span>, <span class="col">nombre</span> <span class="kw">ASC</span>; <span class="cmt">-- primero por apellido, luego nombre</span></pre>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════ -->
+    <!-- JOIN -->
+    <!-- ══════════════════════════════════════ -->
+    <section class="doc-section" id="join">
+      <div class="section-header">
+        <span class="section-icon">🔗</span>
+        <div>
+          <div class="section-title">JOIN — Unir tablas</div>
+        </div>
+      </div>
+
+      <div class="prose">
+        <p>JOIN combina filas de <strong>dos o más tablas</strong> basándose en una columna en común. Es la herramienta que nos permite ver información relacionada de varias tablas al mismo tiempo.</p>
+        <p>Por ejemplo: para ver el nombre del empleado <em>y</em> el nombre de su departamento necesitamos unir las tablas <strong>empleados</strong> y <strong>departamentos</strong>.</p>
+      </div>
+
+      <div class="join-visual">
+        <div class="join-table-box">
+          <h4>👤 empleados</h4>
+          <div class="jrow"><span class="jkey">id_empleado: 1</span> | Ana</div>
+          <div class="jrow"><span class="jkey">id_departamento: 1</span></div>
+        </div>
+        <div class="join-arrow">🔗</div>
+        <div class="join-table-box">
+          <h4>🏢 departamentos</h4>
+          <div class="jrow"><span class="jkey">id_departamento: 1</span></div>
+          <div class="jrow">Recursos Humanos</div>
+        </div>
+        <div class="join-arrow">→</div>
+        <div class="join-result">
+          <h4>✅ Resultado</h4>
+          <div class="jrow">Ana → Recursos Humanos</div>
+        </div>
+      </div>
+
+      <div class="code-block">
+        <div class="code-label lb-sintaxis">Sintaxis</div>
+        <pre><span class="kw">SELECT</span> <span class="col">a.columna</span>, <span class="col">b.columna</span>
+<span class="kw">FROM</span> <span class="tbl">tabla_a</span> <span class="col">a</span>              <span class="cmt">-- alias "a" para tabla_a</span>
+<span class="kw">JOIN</span> <span class="tbl">tabla_b</span> <span class="col">b</span>               <span class="cmt">-- alias "b" para tabla_b</span>
+  <span class="kw">ON</span> <span class="col">a.columna_comun</span> = <span class="col">b.columna_comun</span>;</pre>
+      </div>
+
+      <div class="code-block">
+        <div class="code-label lb-select">Ejemplo — Empleado con su departamento</div>
+        <pre><span class="kw">SELECT</span> <span class="col">e.nombre</span>, <span class="col">e.cargo</span>, <span class="col">d.nombre</span> <span class="kw">AS</span> departamento
+<span class="kw">FROM</span> <span class="tbl">empleados</span> <span class="col">e</span>
+<span class="kw">JOIN</span> <span class="tbl">departamentos</span> <span class="col">d</span>
+  <span class="kw">ON</span> <span class="col">e.id_departamento</span> = <span class="col">d.id_departamento</span>;</pre>
+      </div>
+
+      <div class="tip">
+        <span class="tip-icon">💡</span>
+        <span class="tip-text"><strong>¿Para qué sirve el alias?</strong> Cuando usas dos tablas, puede haber columnas con el mismo nombre (por ejemplo, <em>nombre</em> en empleados y en departamentos). El alias (<code style="font-family:monospace">e.nombre</code>, <code style="font-family:monospace">d.nombre</code>) indica de qué tabla viene cada columna.</span>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════ -->
+    <!-- FUNCIONES -->
+    <!-- ══════════════════════════════════════ -->
+    <section class="doc-section" id="funciones">
+      <div class="section-header">
+        <span class="section-icon">∑</span>
+        <div>
+          <div class="section-title">Funciones de cálculo</div>
+        </div>
+      </div>
+
+      <div class="prose">
+        <p>SQL incluye funciones que realizan cálculos sobre un conjunto de filas y devuelven <strong>un solo valor</strong> como resultado. Son muy usadas en reportes y análisis.</p>
+      </div>
+
+      <div class="card-grid">
+        <div class="card card-neutral">
+          <div class="card-title">COUNT(*)</div>
+          <div class="card-body">Cuenta cuántas filas hay en el resultado.<br><em>¿Cuántos empleados tenemos?</em></div>
+        </div>
+        <div class="card card-neutral">
+          <div class="card-title">SUM(col)</div>
+          <div class="card-body">Suma todos los valores numéricos de una columna.<br><em>Total de salarios.</em></div>
+        </div>
+        <div class="card card-neutral">
+          <div class="card-title">AVG(col)</div>
+          <div class="card-body">Calcula el promedio de los valores.<br><em>Salario promedio.</em></div>
+        </div>
+        <div class="card card-neutral">
+          <div class="card-title">MIN(col) / MAX(col)</div>
+          <div class="card-body">Encuentra el valor más bajo o más alto.<br><em>Salario mínimo y máximo.</em></div>
+        </div>
+      </div>
+
+      <div class="code-block">
+        <div class="code-label lb-select">Ejemplo — Varias funciones a la vez</div>
+        <pre><span class="kw">SELECT</span>
+  <span class="kw">COUNT</span>(*) <span class="kw">AS</span> total_empleados,
+  <span class="kw">AVG</span>(<span class="col">salario</span>) <span class="kw">AS</span> salario_promedio,
+  <span class="kw">MAX</span>(<span class="col">salario</span>) <span class="kw">AS</span> salario_maximo,
+  <span class="kw">MIN</span>(<span class="col">salario</span>) <span class="kw">AS</span> salario_minimo
+<span class="kw">FROM</span> <span class="tbl">empleados</span>;</pre>
+      </div>
+
+      <div class="tip">
+        <span class="tip-icon">💡</span>
+        <span class="tip-text"><strong>AS</strong> sirve para darle un nombre legible a la columna en el resultado. Sin AS, el resultado mostraría <code style="font-family:monospace">COUNT(*)</code> como nombre de columna.</span>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════ -->
+    <!-- BUENAS PRÁCTICAS -->
+    <!-- ══════════════════════════════════════ -->
+    <section class="doc-section" id="buenas-practicas">
+      <div class="section-header">
+        <span class="section-icon">✅</span>
+        <div>
+          <div class="section-title">Buenas prácticas</div>
+        </div>
+      </div>
+
+      <div class="prose">
+        <p>Estas reglas te ayudarán a escribir SQL más seguro, más claro y con menos errores:</p>
+      </div>
+
+      <ul class="checklist">
+        <li><strong>Siempre usa WHERE en UPDATE y DELETE.</strong> Sin WHERE afectas todas las filas. Antes de ejecutar, revisa dos veces tu condición.</li>
+        <li><strong>Prueba con SELECT antes de modificar.</strong> Si vas a hacer un UPDATE o DELETE, primero haz un SELECT con el mismo WHERE para ver exactamente qué filas cambiarán.</li>
+        <li><strong>Escribe las palabras clave en MAYÚSCULAS.</strong> SELECT, FROM, WHERE, INSERT… en mayúsculas. Las tablas y columnas en minúsculas. No es obligatorio, pero es la convención universal y hace el código más legible.</li>
+        <li><strong>Usa IDs para identificar filas.</strong> Prefiere <code style="font-family:monospace">WHERE id_empleado = 3</code> sobre <code style="font-family:monospace">WHERE nombre = 'Ana'</code>. Los IDs son únicos; los nombres pueden repetirse.</li>
+        <li><strong>Indenta tu código.</strong> Pon cada cláusula en su propia línea. Es más fácil de leer y revisar.</li>
+        <li><strong>Termina con punto y coma (;).</strong> Es la forma correcta de cerrar una consulta SQL.</li>
+        <li class="warn-item"><strong>Ten cuidado con DELETE y UPDATE masivos.</strong> En un sistema real, una operación sin WHERE puede borrar o modificar millones de registros en segundos.</li>
+      </ul>
+
+      <div class="info" style="margin-top:24px">
+        <span class="tip-icon">🚀</span>
+        <span class="tip-text"><strong>¿Listo para practicar?</strong> Vuelve al Trainer y prueba escribir tus propias consultas. Usa los ejemplos de la barra lateral como punto de partida y experimenta cambiando los valores del WHERE.</span>
+      </div>
+
+      <div style="text-align:center;margin-top:32px">
+        <a href="index.html" class="back-btn" style="font-size:1rem;padding:12px 28px;border-radius:8px;color:var(--accent);border-color:var(--accent);font-weight:700">← Ir al SQL Trainer</a>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script>
+// ── THEME ──────────────────────────────────────────
+function toggleTheme() {
+  const isDark = document.body.classList.toggle('dark-mode');
+  document.getElementById('theme-toggle').textContent = isDark ? '☀️' : '🌙';
+  localStorage.setItem('sql-theme', isDark ? 'dark' : 'light');
+}
+
+// ── ACTIVE NAV LINK ON SCROLL ─────────────────────
+function updateActiveNav() {
+  const sections = document.querySelectorAll('.doc-section');
+  const links    = document.querySelectorAll('.nav-link');
+  let current = '';
+  sections.forEach(s => {
+    if (window.scrollY >= s.offsetTop - 120) current = s.id;
+  });
+  links.forEach(l => {
+    l.classList.toggle('active', l.getAttribute('href') === '#' + current);
+  });
+}
+
+// ── SMOOTH SCROLL ─────────────────────────────────
+document.querySelectorAll('.nav-link').forEach(link => {
+  link.addEventListener('click', e => {
+    e.preventDefault();
+    const target = document.querySelector(link.getAttribute('href'));
+    if (target) target.scrollIntoView({ behavior: 'smooth' });
+  });
+});
+
+// ── BOOT ──────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  if (localStorage.getItem('sql-theme') === 'dark') {
+    document.body.classList.add('dark-mode');
+    document.getElementById('theme-toggle').textContent = '☀️';
+  }
+  window.addEventListener('scroll', updateActiveNav, { passive: true });
+  updateActiveNav();
+});
+</script>
+</body>
+</html>
